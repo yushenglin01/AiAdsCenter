@@ -2,9 +2,9 @@
 
 AdNova（星曜智投）是面向海外游戏投放团队的广告经营智能分析平台。它统一接收广告平台、MMP、游戏收入与素材表现数据，由确定性代码计算指标，并由受限 Agent 生成解释、建议和审批单。
 
-当前仓库完成 **阶段十一：标准数据接入与 Kafka 消费**。第三方系统可用同一份版本化 JSON 契约提交 AppsFlyer、Adjust、广告平台或自有业务数据；HTTP 与 Kafka 复用导入、幂等和分析链路。
+当前仓库完成 **阶段十二：企业成员注册与授权**。公司成员可从页面申请账号，完成邮箱确认后由管理员分配角色并授权；只有处于 ACTIVE 状态的成员可以登录。
 
-当前项目版本：**1.1.1**；最近迭代：**DEV-20260808-001**。版本历史见 [迭代索引](docs/iterations/README.md) 和 [变更日志](docs/releases/CHANGELOG.md)。
+当前项目版本：**1.2.0**；最近迭代：**DEV-20260809-001**。版本历史见 [迭代索引](docs/iterations/README.md) 和 [变更日志](docs/releases/CHANGELOG.md)。
 
 ## 核心边界
 
@@ -78,6 +78,18 @@ cp .env.example .env
 
 打开 <http://localhost:5173>。API 健康检查：<http://localhost:8080/health>。
 
+本地默认使用 `GAI_REGISTRATION_MAIL_PROVIDER=log`，确认链接只写入 API 日志。共享或生产环境必须配置公司邮箱域名白名单、HTTPS 公网地址和支持 STARTTLS 的 SMTP：
+
+```bash
+GAI_REGISTRATION_ALLOWED_EMAIL_DOMAINS=example.com,subsidiary.example.com
+GAI_REGISTRATION_PUBLIC_BASE_URL=https://adnova.example.com
+GAI_REGISTRATION_MAIL_PROVIDER=smtp
+GAI_REGISTRATION_MAIL_SMTP_ADDRESS=smtp.example.com:587
+GAI_REGISTRATION_MAIL_SMTP_USERNAME=...
+GAI_REGISTRATION_MAIL_SMTP_PASSWORD=...
+GAI_REGISTRATION_MAIL_FROM_ADDRESS=no-reply@example.com
+```
+
 停止服务：
 
 ```bash
@@ -145,11 +157,11 @@ Compose 不内置 Kafka Broker。消费端使用 MySQL Inbox、手动 Offset 提
 
 OpenClaw 内部命令入口为 `POST /api/v1/openclaw/commands`，可启动完整分析工作流。Hermes/外部 OpenClaw HTTP 与消息推送仍保持适配边界；当前没有对应环境，因此 Agent 目录会明确标记为未配置。
 
-## 阶段十一完成情况
+## 阶段十二完成情况
 
-已完成：阶段一至十全部能力；标准批次 1.0.0；统一 HTTP/Kafka 导入服务；Kafka TLS/SASL、Inbox 幂等、手动 Offset、DLQ；带租约与 claim token 的批次分析窗口合并及崩溃恢复；接入 Schema、示例和部署配置。
+已完成：阶段一至十一全部能力；企业成员页面注册；公司邮箱域名白名单；限时邮箱确认链接；管理员申请列表、角色分配、授权与驳回；成员状态机、审计记录和生产 SMTP/HTTPS 配置校验。
 
-仍未完成：真实 Kafka 集群与 AppsFlyer 凭证联调、Adjust/广告平台原生连接器、按日期范围增量分析、Research 自动联网连接器、外部消息投递、生产级不可篡改审计存储、跨进程 OpenTelemetry 与真实模型联调。系统仍没有广告平台执行工具；APPROVED 仅表示人工认可建议，不表示执行。
+仍未完成：企业 SSO/SCIM、邀请制注册、找回密码、管理员强制下线；真实 Kafka 集群与 AppsFlyer 凭证联调、Adjust/广告平台原生连接器、Research 自动联网连接器、外部消息投递、生产级不可篡改审计存储、跨进程 OpenTelemetry 与真实模型联调。系统仍没有广告平台执行工具；APPROVED 仅表示人工认可建议，不表示执行。
 
 ## 开源与安全
 

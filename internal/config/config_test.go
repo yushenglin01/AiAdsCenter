@@ -36,3 +36,26 @@ func TestKafkaEnabledConfiguration(t *testing.T) {
 	require.False(t, cfg.Kafka.TLSEnabled)
 	require.Equal(t, 15*time.Minute, cfg.Kafka.AnalysisLease)
 }
+
+func TestProductionRegistrationRequiresSMTPAndCompanyDomains(t *testing.T) {
+	t.Setenv("GAI_ENVIRONMENT", "production")
+	t.Setenv("GAI_JWT_SECRET", "a-production-secret-that-is-not-the-default")
+	t.Setenv("GAI_REGISTRATION_PUBLIC_BASE_URL", "https://ads.example.com")
+	t.Setenv("GAI_REGISTRATION_MAIL_PROVIDER", "log")
+	t.Setenv("GAI_REGISTRATION_ALLOWED_EMAIL_DOMAINS", "")
+	_, err := Load()
+	require.ErrorContains(t, err, "requires SMTP and allowed company email domains")
+}
+
+func TestProductionRegistrationSMTPConfiguration(t *testing.T) {
+	t.Setenv("GAI_ENVIRONMENT", "production")
+	t.Setenv("GAI_JWT_SECRET", "a-production-secret-that-is-not-the-default")
+	t.Setenv("GAI_REGISTRATION_PUBLIC_BASE_URL", "https://ads.example.com")
+	t.Setenv("GAI_REGISTRATION_MAIL_PROVIDER", "smtp")
+	t.Setenv("GAI_REGISTRATION_MAIL_SMTP_ADDRESS", "smtp.example.com:587")
+	t.Setenv("GAI_REGISTRATION_MAIL_FROM_ADDRESS", "no-reply@example.com")
+	t.Setenv("GAI_REGISTRATION_ALLOWED_EMAIL_DOMAINS", "Example.com, studio.example.com")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, []string{"example.com", "studio.example.com"}, cfg.Registration.AllowedEmailDomains)
+}

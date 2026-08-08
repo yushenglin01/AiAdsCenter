@@ -30,11 +30,12 @@ func SeedDemo(db *gorm.DB) error {
 		{ID: "10000000-0000-4000-8000-000000000005", Code: "VIEWER", Name: "只读用户"},
 		{ID: "10000000-0000-4000-8000-000000000006", Code: "SYSTEM_AGENT", Name: "系统 Agent"},
 	}
+	seedApprovedAt := time.Now().UTC()
 	userRows := []model.User{
-		{ID: "20000000-0000-4000-8000-000000000001", TenantID: DemoTenantID, Username: "admin", DisplayName: "Demo Admin", PasswordHash: string(passwordHash), Status: "ACTIVE"},
-		{ID: "20000000-0000-4000-8000-000000000002", TenantID: DemoTenantID, Username: "manager", DisplayName: "Demo Manager", PasswordHash: string(passwordHash), Status: "ACTIVE"},
-		{ID: "20000000-0000-4000-8000-000000000003", TenantID: DemoTenantID, Username: "operator", DisplayName: "Demo Operator", PasswordHash: string(passwordHash), Status: "ACTIVE"},
-		{ID: "20000000-0000-4000-8000-000000000006", TenantID: DemoTenantID, Username: "system-agent", DisplayName: "System Agent", PasswordHash: string(passwordHash), Status: "SYSTEM"},
+		{ID: "20000000-0000-4000-8000-000000000001", TenantID: DemoTenantID, Username: "admin", Email: "admin@demo.local", DisplayName: "Demo Admin", Department: "平台管理", JobTitle: "系统管理员", PasswordHash: string(passwordHash), Status: "ACTIVE", EmailVerifiedAt: &seedApprovedAt, ApprovedAt: &seedApprovedAt},
+		{ID: "20000000-0000-4000-8000-000000000002", TenantID: DemoTenantID, Username: "manager", Email: "manager@demo.local", DisplayName: "Demo Manager", Department: "广告投放", JobTitle: "投放负责人", PasswordHash: string(passwordHash), Status: "ACTIVE", EmailVerifiedAt: &seedApprovedAt, ApprovedAt: &seedApprovedAt},
+		{ID: "20000000-0000-4000-8000-000000000003", TenantID: DemoTenantID, Username: "operator", Email: "operator@demo.local", DisplayName: "Demo Operator", Department: "广告投放", JobTitle: "投放优化师", PasswordHash: string(passwordHash), Status: "ACTIVE", EmailVerifiedAt: &seedApprovedAt, ApprovedAt: &seedApprovedAt},
+		{ID: "20000000-0000-4000-8000-000000000006", TenantID: DemoTenantID, Username: "system-agent", Email: "system-agent@demo.local", DisplayName: "System Agent", Department: "系统", JobTitle: "服务账号", PasswordHash: string(passwordHash), Status: "SYSTEM", EmailVerifiedAt: &seedApprovedAt},
 	}
 	links := []model.UserRole{
 		{TenantID: DemoTenantID, UserID: userRows[0].ID, RoleID: roleRows[0].ID},

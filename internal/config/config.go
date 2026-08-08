@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"net"
+	"net/mail"
 	"net/url"
 	"regexp"
 	"strings"
@@ -12,17 +14,18 @@ import (
 )
 
 type Config struct {
-	Environment string
-	HTTP        HTTPConfig
-	Database    DatabaseConfig
-	Redis       RedisConfig
-	JWT         JWTConfig
-	Tenant      TenantConfig
-	Demo        DemoConfig
-	LLM         LLMConfig
-	Queue       QueueConfig
-	Kafka       KafkaConfig
-	AppsFlyer   AppsFlyerConfig
+	Environment  string
+	HTTP         HTTPConfig
+	Database     DatabaseConfig
+	Redis        RedisConfig
+	JWT          JWTConfig
+	Tenant       TenantConfig
+	Demo         DemoConfig
+	LLM          LLMConfig
+	Queue        QueueConfig
+	Kafka        KafkaConfig
+	AppsFlyer    AppsFlyerConfig
+	Registration RegistrationConfig
 }
 
 type HTTPConfig struct {
@@ -104,6 +107,24 @@ type AppsFlyerConfig struct {
 	MaxRangeDays   int
 }
 
+type RegistrationConfig struct {
+	Enabled             bool
+	PublicBaseURL       string
+	VerificationTTL     time.Duration
+	ResendCooldown      time.Duration
+	AllowedEmailDomains []string
+	Mail                MailConfig
+}
+
+type MailConfig struct {
+	Provider     string
+	SMTPAddress  string
+	SMTPUsername string
+	SMTPPassword string
+	FromAddress  string
+	FromName     string
+}
+
 func Load() (Config, error) {
 	v := viper.New()
 	v.SetEnvPrefix("GAI")
@@ -111,56 +132,67 @@ func Load() (Config, error) {
 	v.AutomaticEnv()
 
 	defaults := map[string]any{
-		"environment":               "development",
-		"http.address":              ":8080",
-		"http.allowed_origin":       "http://localhost:5173",
-		"http.read_timeout":         "10s",
-		"http.write_timeout":        "30s",
-		"database.dsn":              "gai:gai@tcp(localhost:3306)/game_ads?charset=utf8mb4&parseTime=True&loc=UTC",
-		"database.migration_dir":    "migrations",
-		"redis.address":             "localhost:6379",
-		"redis.password":            "",
-		"redis.db":                  0,
-		"jwt.secret":                "change-me-in-production",
-		"jwt.access_ttl":            "15m",
-		"jwt.refresh_ttl":           "168h",
-		"jwt.issuer":                "game-ads-intelligence",
-		"tenant.default_id":         "00000000-0000-4000-8000-000000000001",
-		"demo.seed":                 true,
-		"llm.provider":              "mock",
-		"llm.base_url":              "",
-		"llm.api_key":               "",
-		"llm.model":                 "mock-business-v1",
-		"llm.timeout":               "30s",
-		"llm.prompt_dir":            "configs/prompts",
-		"llm.schema_dir":            "configs/schemas",
-		"queue.name":                "business-analysis",
-		"queue.concurrency":         4,
-		"queue.max_retry":           3,
-		"queue.task_timeout":        "2m",
-		"queue.retention":           "24h",
-		"queue.dispatch_interval":   "2s",
-		"queue.shutdown_timeout":    "30s",
-		"kafka.enabled":             false,
-		"kafka.brokers":             "",
-		"kafka.topics":              "adnova.ingestion.ad-metrics.v1,adnova.ingestion.mmp-metrics.v1,adnova.ingestion.game-revenue.v1,adnova.ingestion.creative-metrics.v1",
-		"kafka.group_id":            "adnova-ingestion-v1",
-		"kafka.dlq_topic":           "adnova.ingestion.dlq.v1",
-		"kafka.tenant_id":           "",
-		"kafka.producer_system":     "",
-		"kafka.username":            "",
-		"kafka.password":            "",
-		"kafka.tls_enabled":         true,
-		"kafka.debounce":            "60s",
-		"kafka.message_lease":       "5m",
-		"kafka.analysis_lease":      "15m",
-		"kafka.process_retries":     3,
-		"appsflyer.base_url":        "https://hq1.appsflyer.com",
-		"appsflyer.api_token":       "",
-		"appsflyer.timeout":         "8s",
-		"appsflyer.max_retries":     2,
-		"appsflyer.purchase_events": "af_purchase",
-		"appsflyer.max_range_days":  7,
+		"environment":                        "development",
+		"http.address":                       ":8080",
+		"http.allowed_origin":                "http://localhost:5173",
+		"http.read_timeout":                  "10s",
+		"http.write_timeout":                 "30s",
+		"database.dsn":                       "gai:gai@tcp(localhost:3306)/game_ads?charset=utf8mb4&parseTime=True&loc=UTC",
+		"database.migration_dir":             "migrations",
+		"redis.address":                      "localhost:6379",
+		"redis.password":                     "",
+		"redis.db":                           0,
+		"jwt.secret":                         "change-me-in-production",
+		"jwt.access_ttl":                     "15m",
+		"jwt.refresh_ttl":                    "168h",
+		"jwt.issuer":                         "game-ads-intelligence",
+		"tenant.default_id":                  "00000000-0000-4000-8000-000000000001",
+		"demo.seed":                          true,
+		"llm.provider":                       "mock",
+		"llm.base_url":                       "",
+		"llm.api_key":                        "",
+		"llm.model":                          "mock-business-v1",
+		"llm.timeout":                        "30s",
+		"llm.prompt_dir":                     "configs/prompts",
+		"llm.schema_dir":                     "configs/schemas",
+		"queue.name":                         "business-analysis",
+		"queue.concurrency":                  4,
+		"queue.max_retry":                    3,
+		"queue.task_timeout":                 "2m",
+		"queue.retention":                    "24h",
+		"queue.dispatch_interval":            "2s",
+		"queue.shutdown_timeout":             "30s",
+		"kafka.enabled":                      false,
+		"kafka.brokers":                      "",
+		"kafka.topics":                       "adnova.ingestion.ad-metrics.v1,adnova.ingestion.mmp-metrics.v1,adnova.ingestion.game-revenue.v1,adnova.ingestion.creative-metrics.v1",
+		"kafka.group_id":                     "adnova-ingestion-v1",
+		"kafka.dlq_topic":                    "adnova.ingestion.dlq.v1",
+		"kafka.tenant_id":                    "",
+		"kafka.producer_system":              "",
+		"kafka.username":                     "",
+		"kafka.password":                     "",
+		"kafka.tls_enabled":                  true,
+		"kafka.debounce":                     "60s",
+		"kafka.message_lease":                "5m",
+		"kafka.analysis_lease":               "15m",
+		"kafka.process_retries":              3,
+		"appsflyer.base_url":                 "https://hq1.appsflyer.com",
+		"appsflyer.api_token":                "",
+		"appsflyer.timeout":                  "8s",
+		"appsflyer.max_retries":              2,
+		"appsflyer.purchase_events":          "af_purchase",
+		"appsflyer.max_range_days":           7,
+		"registration.enabled":               true,
+		"registration.public_base_url":       "http://localhost:5173",
+		"registration.verification_ttl":      "24h",
+		"registration.resend_cooldown":       "2m",
+		"registration.allowed_email_domains": "",
+		"registration.mail.provider":         "log",
+		"registration.mail.smtp_address":     "",
+		"registration.mail.smtp_username":    "",
+		"registration.mail.smtp_password":    "",
+		"registration.mail.from_address":     "no-reply@adnova.local",
+		"registration.mail.from_name":        "AdNova",
 	}
 	for key, value := range defaults {
 		v.SetDefault(key, value)
@@ -205,6 +237,21 @@ func Load() (Config, error) {
 			PurchaseEvents: splitNonEmpty(v.GetString("appsflyer.purchase_events")),
 			MaxRangeDays:   v.GetInt("appsflyer.max_range_days"),
 		},
+		Registration: RegistrationConfig{
+			Enabled:             v.GetBool("registration.enabled"),
+			PublicBaseURL:       strings.TrimRight(strings.TrimSpace(v.GetString("registration.public_base_url")), "/"),
+			VerificationTTL:     v.GetDuration("registration.verification_ttl"),
+			ResendCooldown:      v.GetDuration("registration.resend_cooldown"),
+			AllowedEmailDomains: lowerNonEmpty(v.GetString("registration.allowed_email_domains")),
+			Mail: MailConfig{
+				Provider:     strings.ToLower(strings.TrimSpace(v.GetString("registration.mail.provider"))),
+				SMTPAddress:  strings.TrimSpace(v.GetString("registration.mail.smtp_address")),
+				SMTPUsername: strings.TrimSpace(v.GetString("registration.mail.smtp_username")),
+				SMTPPassword: v.GetString("registration.mail.smtp_password"),
+				FromAddress:  strings.TrimSpace(v.GetString("registration.mail.from_address")),
+				FromName:     strings.TrimSpace(v.GetString("registration.mail.from_name")),
+			},
+		},
 	}
 	if cfg.JWT.Secret == "" {
 		return Config{}, fmt.Errorf("GAI_JWT_SECRET must not be empty")
@@ -248,6 +295,33 @@ func Load() (Config, error) {
 	if cfg.AppsFlyer.Timeout <= 0 || cfg.AppsFlyer.MaxRetries < 0 || cfg.AppsFlyer.MaxRetries > 5 || cfg.AppsFlyer.MaxRangeDays < 1 || cfg.AppsFlyer.MaxRangeDays > 31 || len(cfg.AppsFlyer.PurchaseEvents) == 0 {
 		return Config{}, fmt.Errorf("AppsFlyer configuration is invalid")
 	}
+	if cfg.Registration.Enabled {
+		publicURL, err := url.Parse(cfg.Registration.PublicBaseURL)
+		if err != nil || publicURL.Host == "" || (publicURL.Scheme != "https" && !(cfg.Environment != "production" && publicURL.Scheme == "http")) || publicURL.User != nil || publicURL.RawQuery != "" || publicURL.Fragment != "" {
+			return Config{}, fmt.Errorf("GAI_REGISTRATION_PUBLIC_BASE_URL must be an absolute HTTPS URL (HTTP is allowed outside production)")
+		}
+		if cfg.Registration.VerificationTTL < 15*time.Minute || cfg.Registration.VerificationTTL > 72*time.Hour || cfg.Registration.ResendCooldown < time.Minute || cfg.Registration.ResendCooldown > time.Hour {
+			return Config{}, fmt.Errorf("registration token timing configuration is invalid")
+		}
+		if cfg.Registration.Mail.Provider != "log" && cfg.Registration.Mail.Provider != "smtp" {
+			return Config{}, fmt.Errorf("GAI_REGISTRATION_MAIL_PROVIDER must be log or smtp")
+		}
+		if cfg.Registration.Mail.Provider == "smtp" {
+			if _, _, err := net.SplitHostPort(cfg.Registration.Mail.SMTPAddress); err != nil {
+				return Config{}, fmt.Errorf("GAI_REGISTRATION_MAIL_SMTP_ADDRESS must be host:port")
+			}
+			from, err := mail.ParseAddress(cfg.Registration.Mail.FromAddress)
+			if err != nil || from.Address != cfg.Registration.Mail.FromAddress {
+				return Config{}, fmt.Errorf("GAI_REGISTRATION_MAIL_FROM_ADDRESS must be a valid email address")
+			}
+			if strings.ContainsAny(cfg.Registration.Mail.FromName, "\r\n") {
+				return Config{}, fmt.Errorf("GAI_REGISTRATION_MAIL_FROM_NAME must not contain line breaks")
+			}
+		}
+		if cfg.Environment == "production" && (cfg.Registration.Mail.Provider != "smtp" || len(cfg.Registration.AllowedEmailDomains) == 0) {
+			return Config{}, fmt.Errorf("production registration requires SMTP and allowed company email domains")
+		}
+	}
 	return cfg, nil
 }
 
@@ -260,4 +334,12 @@ func splitNonEmpty(value string) []string {
 		}
 	}
 	return result
+}
+
+func lowerNonEmpty(value string) []string {
+	parts := splitNonEmpty(value)
+	for index := range parts {
+		parts[index] = strings.ToLower(parts[index])
+	}
+	return parts
 }

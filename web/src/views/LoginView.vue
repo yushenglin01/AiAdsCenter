@@ -10,7 +10,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const errorMessage = ref('')
-const form = reactive({ username: 'admin', password: 'Demo@123456' })
+const form = reactive({ username: '', password: '' })
 
 async function submit() {
   errorMessage.value = ''
@@ -51,7 +51,7 @@ async function submit() {
       <footer class="signal-rail">
         <span><i></i> SYSTEM ONLINE</span>
         <span>APPSFLYER CONNECTED</span>
-        <span>PHASE 11</span>
+        <span>PHASE 12</span>
       </footer>
     </section>
 
@@ -60,12 +60,12 @@ async function submit() {
         <div class="access-heading">
           <span class="eyebrow">COMMAND ACCESS</span>
           <h2 id="login-title">进入指挥舱</h2>
-          <p>登录 AdNova 海外广告经营工作台</p>
+          <p>仅限已完成邮箱确认并通过管理员授权的内部成员</p>
         </div>
         <el-alert v-if="errorMessage" :title="errorMessage" type="error" show-icon :closable="false" />
         <el-form label-position="top" @submit.prevent="submit">
-          <el-form-item label="用户名">
-            <el-input v-model="form.username" size="large" autocomplete="username" placeholder="输入用户名">
+          <el-form-item label="邮箱或用户名">
+            <el-input v-model="form.username" size="large" autocomplete="username" placeholder="输入公司邮箱或用户名">
               <template #prefix><el-icon><User /></el-icon></template>
             </el-input>
           </el-form-item>
@@ -78,10 +78,10 @@ async function submit() {
             进入 AdNova <span aria-hidden="true">↗</span>
           </el-button>
         </el-form>
-        <div class="demo-hint"><span>DEMO ACCESS</span><code>admin</code><i>/</i><code>Demo@123456</code></div>
+        <div class="auth-switch">还没有内部成员账号？<router-link to="/register">提交注册申请</router-link></div>
         <p class="security-note"><span aria-hidden="true">◇</span> 只生成建议与审批单，不直接操作广告平台</p>
       </div>
-      <p class="access-footnote">AdNova Intelligence System · v1.1.1</p>
+      <p class="access-footnote">AdNova Intelligence System · v1.2.0</p>
     </section>
   </main>
 </template>

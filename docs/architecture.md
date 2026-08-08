@@ -1,8 +1,10 @@
-# 阶段十一架构（项目 1.1.1）
+# 阶段十二架构（项目 1.2.0）
 
 当前采用模块化单体。`cmd/server` 负责 HTTP、数据库 migration 与队列投递，`cmd/worker` 运行 Asynq 消费者和 Outbox dispatcher，`cmd/ingestion-worker` 可选消费外部 Kafka 数据并触发确定性分析。业务调用方向为 Handler → Service → Repository；Handler 不访问 GORM，Repository 查询显式接收 `tenant_id`。
 
 认证使用短期 Access Token 与长期 Refresh Token。当前按单公司模式运行，登录接口不接收公司参数，账号查询只能使用服务端 `GAI_TENANT_DEFAULT_ID`。签名 Claims 仍包含 `user_id`、`tenant_id` 和角色，为数据安全边界及后续多公司扩展保留稳定结构。RBAC 在服务端中间件执行，前端守卫只用于改善体验。
+
+1.2.0 增加企业成员注册状态机：页面申请先写入 `PENDING_EMAIL`，一次性 Token 仅以 SHA-256 摘要存储；邮箱确认后进入 `PENDING_APPROVAL`，ADMIN 分配至少一个人类角色后原子切换为 `ACTIVE`。`REJECTED`、`DISABLED` 和所有待处理状态都不能签发 Token。生产环境强制配置公司邮箱域名白名单、HTTPS 公网地址和 STARTTLS SMTP；注册、确认、批准与驳回均写入租户审计记录。
 
 MySQL 保存业务数据、Agent 任务、事务 Outbox 和报告快照；Redis 保存 Asynq 待执行任务与重试元数据。API 启动时按文件名顺序执行 `migrations/*.up.sql`，在 `schema_migrations` 保存 SHA-256；Worker 等待 API 健康后仅打开数据库，避免并发迁移。已发布 migration 校验值变化时拒绝启动。
 
