@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "attribution-agent-output/1.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings", "calculation_mode", "analysis_capabilities"],
+  "properties": {
+    "findings": {"type": "integer", "minimum": 0},
+    "calculation_mode": {"const": "DETERMINISTIC"},
+    "analysis_capabilities": {"type": "array", "items": {"type": "string"}}
+  }
+}

@@ -1,0 +1,307 @@
+{
+  "game_id": "30000000-0000-4000-8000-000000000001",
+  "source": "GOOGLE",
+  "file_name": "google_ad_metrics.json",
+  "records": [
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1800,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-01",
+      "impressions": 120000,
+      "installs": 300,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1810,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-02",
+      "impressions": 120300,
+      "installs": 301,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1820,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-03",
+      "impressions": 120600,
+      "installs": 302,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1830,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-04",
+      "impressions": 120900,
+      "installs": 303,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1840,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-05",
+      "impressions": 121200,
+      "installs": 304,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1850,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-06",
+      "impressions": 121500,
+      "installs": 300,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1800,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-07",
+      "impressions": 121800,
+      "installs": 301,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1810,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-08",
+      "impressions": 122100,
+      "installs": 302,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1820,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-09",
+      "impressions": 122400,
+      "installs": 303,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1830,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-10",
+      "impressions": 122700,
+      "installs": 304,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1840,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-11",
+      "impressions": 123000,
+      "installs": 300,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1850,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-12",
+      "impressions": 123300,
+      "installs": 301,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1800,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-13",
+      "impressions": 123600,
+      "installs": 302,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1810,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-14",
+      "impressions": 123900,
+      "installs": 303,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1820,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-15",
+      "impressions": 124200,
+      "installs": 304,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1830,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-16",
+      "impressions": 124500,
+      "installs": 300,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1840,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-17",
+      "impressions": 124800,
+      "installs": 301,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1850,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-18",
+      "impressions": 125100,
+      "installs": 302,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1800,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-19",
+      "impressions": 125400,
+      "installs": 303,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1810,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-20",
+      "impressions": 125700,
+      "installs": 304,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1820,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-21",
+      "impressions": 126000,
+      "installs": 300,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1830,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-22",
+      "impressions": 126300,
+      "installs": 301,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1840,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-23",
+      "impressions": 126600,
+      "installs": 302,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1850,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-24",
+      "impressions": 126900,
+      "installs": 303,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1800,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-25",
+      "impressions": 127200,
+      "installs": 304,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1810,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-26",
+      "impressions": 127500,
+      "installs": 300,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1820,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-27",
+      "impressions": 127800,
+      "installs": 301,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1830,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-28",
+      "impressions": 128100,
+      "installs": 302,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1840,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-29",
+      "impressions": 128400,
+      "installs": 303,
+      "spend": 1800
+    },
+    {
+      "campaign_external_id": "google-jp-001",
+      "clicks": 1850,
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-30",
+      "impressions": 128700,
+      "installs": 304,
+      "spend": 1800
+    }
+  ]
+}

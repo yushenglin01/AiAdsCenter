@@ -1,0 +1,619 @@
+openapi: 3.0.3
+info:
+  title: AdNova API
+  version: 1.1.1
+  description: |
+    AdNova 单公司 MVP 的当前 HTTP 契约。业务响应统一使用 Envelope，除健康检查、登录和刷新外均使用 Bearer Access Token。
+    租户范围由 Token 决定；客户端可通过 X-Request-ID 和 X-Trace-ID 传递链路标识。
+servers:
+  - url: http://localhost:8080
+    description: 本地开发环境
+paths:
+  /health:
+    get:
+      summary: MySQL 与 Redis 健康检查
+      responses: {"200": {description: 健康}, "503": {description: 依赖降级}}
+  /api/v1/auth/login:
+    post:
+      summary: 用户名密码登录，公司由服务端固定
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/LoginRequest"}
+      responses:
+        "200":
+          description: Token 对
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TokenEnvelope"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+  /api/v1/auth/refresh:
+    post:
+      summary: 刷新 Token 对
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/RefreshRequest"}
+      responses:
+        "200":
+          description: 新 Token 对
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TokenEnvelope"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+  /api/v1/auth/me:
+    get: {$ref: "#/components/x-operations/readCurrentUser"}
+  /api/v1/tenants/current:
+    get: {$ref: "#/components/x-operations/readCurrentCompany"}
+  /api/v1/games:
+    get: {$ref: "#/components/x-operations/listResource"}
+    post: {$ref: "#/components/x-operations/writeManagerResource"}
+  /api/v1/games/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+    put: {$ref: "#/components/x-operations/writeManagerResource"}
+  /api/v1/channels:
+    get: {$ref: "#/components/x-operations/listResource"}
+    post: {$ref: "#/components/x-operations/writeAdminResource"}
+  /api/v1/channels/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+    put: {$ref: "#/components/x-operations/writeAdminResource"}
+  /api/v1/campaigns:
+    get: {$ref: "#/components/x-operations/listResource"}
+    post: {$ref: "#/components/x-operations/writeManagerResource"}
+  /api/v1/campaigns/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+    put: {$ref: "#/components/x-operations/writeManagerResource"}
+  /api/v1/creatives:
+    get: {$ref: "#/components/x-operations/listResource"}
+    post: {$ref: "#/components/x-operations/writeOperatorResource"}
+  /api/v1/creatives/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+    put: {$ref: "#/components/x-operations/writeOperatorResource"}
+  /api/v1/imports:
+    get: {$ref: "#/components/x-operations/listResource"}
+  /api/v1/imports/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+  /api/v1/imports/ad-metrics:
+    post: {$ref: "#/components/x-operations/importMetrics"}
+  /api/v1/imports/mmp-metrics:
+    post: {$ref: "#/components/x-operations/importMetrics"}
+  /api/v1/imports/game-revenue:
+    post: {$ref: "#/components/x-operations/importMetrics"}
+  /api/v1/imports/creative-metrics:
+    post: {$ref: "#/components/x-operations/importMetrics"}
+  /api/v1/imports/batches:
+    post:
+      summary: ADMIN/MANAGER/OPERATOR 按标准批次契约导入第三方广告、MMP、收入或素材指标
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/StandardIngestionBatch"}
+      responses:
+        "201": {description: 导入完成；相同 producer.system + batch_id 返回已有导入任务}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {description: 相同批次标识对应不同规范化内容}
+  /api/v1/mmp-connections:
+    get:
+      summary: 列出租户内 MMP 连接与服务端凭证配置状态；不返回 Token
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: MMP 连接列表}}
+  /api/v1/mmp-connections/appsflyer:
+    put:
+      summary: ADMIN/MANAGER 保存游戏到 AppsFlyer App ID 的映射
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ConfigureAppsFlyerRequest"}
+      responses: {"201": {description: 连接已保存；只返回 credential_configured 布尔值}, "400": {description: 输入无效}, "403": {description: 无权限}, "409": {description: 已成功同步的连接禁止直接更换 App ID}}
+  /api/v1/mmp-sync-runs:
+    get:
+      summary: 列出租户内 AppsFlyer 同步运行
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 最近 200 个同步运行}}
+  /api/v1/mmp-connections/{id}/sync:
+    post:
+      summary: ADMIN/MANAGER/OPERATOR 同步最多 7 天 AppsFlyer 安装与付费事件
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MMPSyncRequest"}
+      responses: {"201": {description: 同步完成或命中已有幂等运行}, "400": {description: 日期、连接或导入校验失败}, "403": {description: 无权限}, "404": {description: 连接不存在或跨租户}, "429": {description: AppsFlyer 限流且有限重试耗尽}, "502": {description: AppsFlyer 暂时不可用或响应不安全}}
+  /api/v1/metrics/overview:
+    get:
+      summary: 经营指标总览
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/GameIDQuery"}]
+      responses: {"200": {description: 成功}, "401": {$ref: "#/components/responses/Unauthorized"}}
+  /api/v1/metrics/campaigns:
+    get:
+      summary: 计划聚合指标
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/GameIDQuery"}]
+      responses: {"200": {description: 成功}, "401": {$ref: "#/components/responses/Unauthorized"}}
+  /api/v1/metrics/campaigns/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+  /api/v1/metrics/trends:
+    get:
+      summary: 按日指标趋势
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/GameIDQuery"}
+        - {$ref: "#/components/parameters/CampaignIDQuery"}
+      responses: {"200": {description: 成功}, "401": {$ref: "#/components/responses/Unauthorized"}}
+  /api/v1/metrics/recalculate:
+    post:
+      summary: 同步重算指标并执行确定性分析
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 重算已完成}, "403": {description: 无权限}, "422": {description: 参数或数据无效}}
+  /api/v1/analysis/rules:
+    get: {$ref: "#/components/x-operations/listResource"}
+  /api/v1/analysis/rules/{id}:
+    put: {$ref: "#/components/x-operations/writeManagerResource"}
+  /api/v1/analysis/attribution:
+    get: {$ref: "#/components/x-operations/listResource"}
+  /api/v1/analysis/attribution/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+  /api/v1/analysis/creative:
+    get: {$ref: "#/components/x-operations/listResource"}
+  /api/v1/analysis/creative/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+  /api/v1/research/sources:
+    get:
+      summary: 列出当前租户研究来源，可按范围、分类与状态筛选
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/GameIDQuery"}
+        - {$ref: "#/components/parameters/CampaignIDQuery"}
+        - {name: category, in: query, required: false, schema: {type: string, enum: [POLICY, COMPETITOR, MARKET]}}
+        - {name: status, in: query, required: false, schema: {type: string, enum: [PENDING, VERIFIED, REJECTED]}}
+        - {$ref: "#/components/parameters/Limit100"}
+      responses:
+        "200":
+          description: 研究来源列表，按发布日期和创建时间倒序
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: "#/components/schemas/Envelope"}
+                  - {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/ResearchSource"}}}}
+    post:
+      summary: ADMIN/MANAGER/ANALYST 登记 PENDING HTTPS 研究来源
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ResearchSourceRequest"}
+      responses: {"201": {description: 来源已登记或命中内容幂等记录}, "400": {description: 来源或日期无效}, "403": {description: 无权限}}
+  /api/v1/research/sources/{id}/verify:
+    post: {$ref: "#/components/x-operations/reviewResearchSource"}
+  /api/v1/research/sources/{id}/reject:
+    post: {$ref: "#/components/x-operations/reviewResearchSource"}
+  /api/v1/analysis/business:
+    post:
+      summary: 接收幂等经营分析任务并异步执行
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BusinessAnalysisRequest"}
+      responses: {"202": {description: 任务已接收；可能返回已有幂等任务}, "403": {description: 无权限}, "422": {description: 请求无效}}
+  /api/v1/analysis/business/tasks:
+    get: {$ref: "#/components/x-operations/listResource"}
+  /api/v1/analysis/business/tasks/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+  /api/v1/analysis/business/tasks/{id}/events:
+    get:
+      summary: 订阅任务状态 SSE；终态后关闭，长连接 25 秒后要求重连
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"200": {description: text/event-stream 任务快照流}, "404": {description: 不存在或不属于当前公司}}
+  /api/v1/analysis/business/tasks/{id}/report:
+    get:
+      summary: 读取成功任务的不可变 Markdown 报告快照
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"200": {description: 报告快照}, "404": {description: 报告未生成或不属于当前公司}}
+  /api/v1/analysis/business/health:
+    get: {$ref: "#/components/x-operations/getResource"}
+  /api/v1/agents:
+    get:
+      summary: 列出七类 Agent 的规格、可用性和健康状态
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Agent 目录}}
+  /api/v1/agents/{name}:
+    get: {$ref: "#/components/x-operations/getResource"}
+  /api/v1/workflows/analysis:
+    post:
+      summary: 启动完整多 Agent 经营分析工作流
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/WorkflowStartRequest"}
+      responses: {"202": {description: 工作流已启动}, "403": {description: 无权限}, "422": {description: 输入无效}}
+  /api/v1/workflows:
+    get: {$ref: "#/components/x-operations/listResource"}
+  /api/v1/workflows/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+  /api/v1/workflows/{id}/events:
+    get:
+      summary: 订阅工作流状态 SSE；终态或待审批后关闭，25 秒要求重连
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"200": {description: text/event-stream 工作流快照流}, "404": {description: 不存在或不属于当前公司}}
+  /api/v1/openclaw/commands:
+    post:
+      summary: OpenClaw 内部命令入口；支持工作流、审批 Inbox 与通知操作
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/OpenClawCommand"}
+      responses:
+        "200":
+          description: 查询或内部状态操作完成
+          content: {application/json: {schema: {$ref: "#/components/schemas/OpenClawResultEnvelope"}}}
+        "202":
+          description: 工作流已启动或命中工作流幂等记录
+          content: {application/json: {schema: {$ref: "#/components/schemas/OpenClawResultEnvelope"}}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /api/v1/notifications:
+    get:
+      summary: 列出当前租户的 OpenClaw 内部工作流消息
+      security: [{bearerAuth: []}]
+      parameters: [{name: status, in: query, required: false, schema: {type: string, enum: [UNREAD, READ]}}]
+      responses: {"200": {description: 内部消息列表}}
+  /api/v1/notifications/{id}/read:
+    post:
+      summary: 幂等标记内部消息为已读
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"200": {description: 已更新或原本已读的消息}, "404": {description: 不存在或不属于当前公司}}
+  /api/v1/recommendations:
+    get:
+      summary: 按租户列出经营建议，可按 status、action、risk_level 筛选
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: status, in: query, required: false, schema: {type: string}}
+        - {name: action, in: query, required: false, schema: {type: string}}
+        - {name: risk_level, in: query, required: false, schema: {type: string}}
+        - {$ref: "#/components/parameters/Limit100"}
+      responses: {"200": {description: 建议、关联审批和任务状态}}
+  /api/v1/recommendations/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+  /api/v1/approvals:
+    get:
+      summary: 按租户列出审批，可按 status、action 筛选
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: status, in: query, required: false, schema: {type: string, enum: [PENDING, APPROVED, REJECTED]}}
+        - {name: action, in: query, required: false, schema: {type: string}}
+        - {$ref: "#/components/parameters/Limit100"}
+      responses: {"200": {description: 审批、建议、任务和报告详情}}
+  /api/v1/approvals/{id}:
+    get: {$ref: "#/components/x-operations/getResource"}
+  /api/v1/approvals/{id}/approve:
+    post: {$ref: "#/components/x-operations/decideApproval"}
+  /api/v1/approvals/{id}/reject:
+    post: {$ref: "#/components/x-operations/decideApproval"}
+  /api/v1/model-usage:
+    get:
+      summary: ADMIN/MANAGER 查看模型调用明细
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/Limit200"}]
+      responses: {"200": {description: 调用记录}, "403": {description: 无权限}}
+  /api/v1/model-usage/summary:
+    get:
+      summary: ADMIN/MANAGER 查看 Token、成本、成功率与 Provider 汇总
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 模型用量汇总}, "403": {description: 无权限}}
+  /api/v1/audit-logs:
+    get:
+      summary: ADMIN 查看租户审计事件
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: action, in: query, required: false, schema: {type: string}}
+        - {name: resource_type, in: query, required: false, schema: {type: string}}
+        - {name: actor_id, in: query, required: false, schema: {type: string, format: uuid}}
+        - {name: task_id, in: query, required: false, schema: {type: string, format: uuid}}
+        - {$ref: "#/components/parameters/Limit200"}
+      responses: {"200": {description: 审计事件}, "403": {description: 无权限}}
+  /api/v1/dashboard/operations:
+    get:
+      summary: 经营 Dashboard 的审批、任务、模型和审计汇总
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 运营汇总}}
+  /api/v1/admin/ping:
+    get:
+      summary: ADMIN 权限探针
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: ADMIN 可访问}, "403": {description: 无 ADMIN 角色}}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    GameIDQuery:
+      name: game_id
+      in: query
+      required: false
+      description: 当前租户内的游戏 UUID
+      schema: {type: string, format: uuid}
+    CampaignIDQuery:
+      name: campaign_id
+      in: query
+      required: false
+      description: 当前租户内的广告计划 UUID
+      schema: {type: string, format: uuid}
+    Limit100:
+      name: limit
+      in: query
+      required: false
+      description: 未传、非正数或超过 100 时使用 50
+      schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+    Limit200:
+      name: limit
+      in: query
+      required: false
+      description: 未传、非正数或超过 200 时使用 100
+      schema: {type: integer, minimum: 1, maximum: 200, default: 100}
+  responses:
+    BadRequest:
+      description: 请求体、日期或参数格式错误
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+    Unauthorized:
+      description: Access Token 缺失、过期或无效
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+    Forbidden:
+      description: 当前角色无权执行该操作
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties: {username: {type: string}, password: {type: string, format: password}}
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required: [refresh_token]
+      properties: {refresh_token: {type: string, description: 登录或上次刷新返回的 Refresh Token}}
+    TokenPair:
+      type: object
+      required: [access_token, refresh_token, token_type, expires_in]
+      properties:
+        access_token: {type: string, description: 用于 Authorization Bearer 的 Access Token}
+        refresh_token: {type: string, description: 仅用于刷新端点}
+        token_type: {type: string, enum: [Bearer]}
+        expires_in: {type: integer, format: int64, description: Access Token 有效秒数}
+    TokenEnvelope:
+      allOf:
+        - {$ref: "#/components/schemas/Envelope"}
+        - {type: object, properties: {data: {$ref: "#/components/schemas/TokenPair"}}}
+    BusinessAnalysisRequest:
+      type: object
+      additionalProperties: false
+      required: [game_id, campaign_id]
+      properties:
+        game_id: {type: string, format: uuid}
+        campaign_id: {type: string, format: uuid}
+        analysis_date: {type: string, format: date}
+    StandardIngestionBatch:
+      type: object
+      additionalProperties: false
+      required: [schema, schema_version, batch_id, dataset_type, source, producer, game_code, timezone, period, collected_at, records]
+      properties:
+        schema: {type: string, enum: [adnova.ingestion.batch]}
+        schema_version: {type: string, enum: [1.0.0]}
+        batch_id: {type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}
+        tenant_id: {type: string, format: uuid, description: HTTP 按 JWT 租户校验；Kafka 消息必须与消费者固定租户一致}
+        dataset_type: {type: string, enum: [AD_METRICS, MMP_METRICS, GAME_REVENUE, CREATIVE_METRICS]}
+        source: {type: string, pattern: "^[A-Z][A-Z0-9_]{1,39}$"}
+        write_mode: {type: string, enum: [APPEND, REPLACE_RANGE], default: APPEND, description: REPLACE_RANGE 仅允许 MMP_METRICS}
+        producer:
+          type: object
+          additionalProperties: false
+          required: [system]
+          properties:
+            system: {type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$"}
+            instance: {type: string, maxLength: 128}
+            version: {type: string, maxLength: 64}
+        game_code: {type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$"}
+        timezone: {type: string, enum: [UTC]}
+        period:
+          type: object
+          additionalProperties: false
+          required: [start, end]
+          properties:
+            start: {type: string, format: date}
+            end: {type: string, format: date}
+        collected_at: {type: string, format: date-time}
+        records:
+          type: array
+          minItems: 1
+          maxItems: 10000
+          items: {type: object, additionalProperties: true, description: 字段集合及各 dataset 必填项见版本化 JSON Schema}
+    WorkflowStartRequest:
+      type: object
+      additionalProperties: false
+      required: [game_id, campaign_id]
+      properties:
+        game_id: {type: string, format: uuid}
+        campaign_id: {type: string, format: uuid}
+        analysis_date: {type: string, format: date}
+    ResearchSourceRequest:
+      type: object
+      additionalProperties: false
+      required: [category, title, summary, source_url, publisher, published_at]
+      properties:
+        game_id: {type: string, format: uuid}
+        campaign_id: {type: string, format: uuid}
+        category: {type: string, enum: [POLICY, COMPETITOR, MARKET]}
+        title: {type: string, maxLength: 300}
+        summary: {type: string, maxLength: 2000}
+        source_url: {type: string, format: uri, pattern: "^https://"}
+        publisher: {type: string, maxLength: 200}
+        published_at: {type: string, format: date}
+    ResearchDecisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        comment: {type: string, maxLength: 1000}
+    ResearchSource:
+      type: object
+      required: [id, tenant_id, category, title, summary, source_url, publisher, published_at, content_hash, status, created_by, created_at, updated_at]
+      properties:
+        id: {type: string, format: uuid}
+        tenant_id: {type: string, format: uuid}
+        game_id: {type: string, format: uuid}
+        campaign_id: {type: string, format: uuid}
+        category: {type: string, enum: [POLICY, COMPETITOR, MARKET]}
+        title: {type: string}
+        summary: {type: string}
+        source_url: {type: string, format: uri}
+        publisher: {type: string}
+        published_at: {type: string, format: date-time}
+        content_hash: {type: string, pattern: "^[0-9a-f]{64}$"}
+        status: {type: string, enum: [PENDING, VERIFIED, REJECTED]}
+        review_comment: {type: string}
+        created_by: {type: string, format: uuid}
+        reviewed_by: {type: string, format: uuid}
+        reviewed_at: {type: string, format: date-time}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    OpenClawCommand:
+      type: object
+      additionalProperties: false
+      required: [intent, input]
+      properties:
+        intent: {type: string, enum: [RUN_FULL_ANALYSIS, GET_WORKFLOW_STATUS, LIST_PENDING_APPROVALS, LIST_NOTIFICATIONS, MARK_NOTIFICATION_READ]}
+        input:
+          type: object
+          description: RUN_FULL_ANALYSIS 需要 game_id/campaign_id；GET_WORKFLOW_STATUS 需要 workflow_id；MARK_NOTIFICATION_READ 需要 notification_id。
+          properties:
+            game_id: {type: string, format: uuid}
+            campaign_id: {type: string, format: uuid}
+            analysis_date: {type: string, format: date}
+            workflow_id: {type: string, format: uuid}
+            notification_status: {type: string, enum: [UNREAD, READ]}
+            notification_id: {type: string, format: uuid}
+    OpenClawResult:
+      type: object
+      required: [intent, status, data]
+      properties:
+        intent: {type: string, enum: [RUN_FULL_ANALYSIS, GET_WORKFLOW_STATUS, LIST_PENDING_APPROVALS, LIST_NOTIFICATIONS, MARK_NOTIFICATION_READ]}
+        status: {type: string, enum: [ACCEPTED, SUCCEEDED]}
+        data: {description: 与 intent 对应的工作流、审批列表或通知数据}
+    OpenClawResultEnvelope:
+      allOf:
+        - {$ref: "#/components/schemas/Envelope"}
+        - {type: object, properties: {data: {$ref: "#/components/schemas/OpenClawResult"}}}
+    ConfigureAppsFlyerRequest:
+      type: object
+      additionalProperties: false
+      required: [game_id, external_app_id]
+      properties:
+        game_id: {type: string, format: uuid}
+        external_app_id: {type: string, minLength: 2, maxLength: 255}
+        status: {type: string, enum: [ACTIVE, DISABLED], default: ACTIVE}
+    MMPSyncRequest:
+      type: object
+      additionalProperties: false
+      required: [from, to]
+      properties:
+        from: {type: string, format: date}
+        to: {type: string, format: date}
+    ApprovalDecisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        comment: {type: string, maxLength: 1000}
+    Envelope:
+      type: object
+      required: [code, message, request_id]
+      properties:
+        code: {type: integer, description: 0 表示成功；非 0 为稳定通用错误码}
+        message: {type: string}
+        data: {}
+        request_id: {type: string}
+    ErrorEnvelope:
+      type: object
+      required: [code, message, data, request_id]
+      properties:
+        code: {type: integer, enum: [10001, 10002, 10003, 10004, 10005, 10500]}
+        message: {type: string}
+        data: {nullable: true, example: null}
+        request_id: {type: string, format: uuid}
+  x-operations:
+    readCurrentUser: &readCurrentUser
+      summary: 读取当前用户
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 当前用户}, "401": {description: 未认证}}
+    readCurrentCompany: &readCurrentCompany
+      summary: 读取当前公司
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 当前公司}, "401": {description: 未认证}}
+    listResource: &listResource
+      summary: 租户范围内列表读取
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 成功}, "401": {description: 未认证}}
+    getResource: &getResource
+      summary: 租户范围内单项读取
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: 成功}, "404": {description: 不存在或不属于当前公司}}
+    writeAdminResource: &writeAdminResource
+      summary: ADMIN 写操作
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 成功}, "403": {description: 无权限}, "422": {description: 输入无效}}
+    writeManagerResource: &writeManagerResource
+      summary: ADMIN/MANAGER 写操作
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 成功}, "403": {description: 无权限}, "422": {description: 输入无效}}
+    writeOperatorResource: &writeOperatorResource
+      summary: ADMIN/MANAGER/OPERATOR 写操作
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 成功}, "403": {description: 无权限}, "422": {description: 输入无效}}
+    importMetrics: &importMetrics
+      summary: JSON 或 multipart 指标导入
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 导入成功或幂等命中}, "403": {description: 无权限}, "422": {description: 文件或记录无效}}
+    decideApproval: &decideApproval
+      summary: ADMIN/MANAGER 决策 PENDING 审批；创建者和 SYSTEM_AGENT 禁止决策
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ApprovalDecisionRequest"}
+      responses: {"200": {description: 审批与建议状态已原子更新；未调用广告平台}, "400": {description: 驳回缺少意见}, "403": {description: 角色或自审批禁止}, "404": {description: 不存在或跨租户}, "409": {description: 审批已被决策}}
+    reviewResearchSource: &reviewResearchSource
+      summary: ADMIN/MANAGER 核验或驳回 PENDING 研究来源
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ResearchDecisionRequest"}
+      responses: {"200": {description: 审核完成或幂等命中}, "400": {description: 驳回缺少意见}, "403": {description: 无权限}, "404": {description: 不存在或跨租户}, "409": {description: 已被其他审核决定}}

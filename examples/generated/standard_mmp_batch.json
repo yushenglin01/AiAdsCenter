@@ -1,0 +1,35 @@
+{
+  "schema": "adnova.ingestion.batch",
+  "schema_version": "1.0.0",
+  "batch_id": "partner-data-hub-20260805-af-000001",
+  "tenant_id": "00000000-0000-4000-8000-000000000001",
+  "dataset_type": "MMP_METRICS",
+  "source": "APPSFLYER",
+  "write_mode": "APPEND",
+  "producer": {
+    "system": "PARTNER-DATA-HUB",
+    "instance": "production",
+    "version": "2.3.1"
+  },
+  "game_code": "game-1001",
+  "timezone": "UTC",
+  "period": {
+    "start": "2026-08-01",
+    "end": "2026-08-01"
+  },
+  "collected_at": "2026-08-05T10:30:00Z",
+  "records": [
+    {
+      "source_record_id": "af-meta-us-20260801",
+      "date": "2026-08-01",
+      "channel_code": "META",
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "installs": 360,
+      "activations": 280,
+      "payers": 24,
+      "revenue": "2730.000000"
+    }
+  ]
+}

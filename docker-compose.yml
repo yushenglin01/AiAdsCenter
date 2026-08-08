@@ -1,0 +1,140 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: game_ads
+      MYSQL_USER: gai
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-gai_local_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_local_password}
+      TZ: UTC
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root_local_password}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      GAI_ENVIRONMENT: development
+      GAI_HTTP_ADDRESS: :8080
+      GAI_HTTP_ALLOWED_ORIGIN: http://localhost:${WEB_PORT:-5173}
+      GAI_DATABASE_DSN: gai:${MYSQL_PASSWORD:-gai_local_password}@tcp(mysql:3306)/game_ads?charset=utf8mb4&parseTime=True&loc=UTC
+      GAI_DATABASE_MIGRATION_DIR: migrations
+      GAI_REDIS_ADDRESS: redis:6379
+      GAI_JWT_SECRET: ${JWT_SECRET:-local-demo-secret-change-before-production}
+      GAI_TENANT_DEFAULT_ID: ${GAI_TENANT_DEFAULT_ID:-00000000-0000-4000-8000-000000000001}
+      GAI_DEMO_SEED: "true"
+      GAI_LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      GAI_LLM_BASE_URL: ${LLM_BASE_URL:-}
+      GAI_LLM_API_KEY: ${LLM_API_KEY:-}
+      GAI_LLM_MODEL: ${LLM_MODEL:-mock-business-v1}
+      GAI_LLM_PROMPT_DIR: configs/prompts
+      GAI_LLM_SCHEMA_DIR: configs/schemas
+      GAI_QUEUE_NAME: ${GAI_QUEUE_NAME:-business-analysis}
+      GAI_QUEUE_MAX_RETRY: ${GAI_QUEUE_MAX_RETRY:-3}
+      GAI_QUEUE_TASK_TIMEOUT: ${GAI_QUEUE_TASK_TIMEOUT:-2m}
+      GAI_QUEUE_RETENTION: ${GAI_QUEUE_RETENTION:-24h}
+      GAI_APPSFLYER_BASE_URL: ${GAI_APPSFLYER_BASE_URL:-https://hq1.appsflyer.com}
+      GAI_APPSFLYER_API_TOKEN: ${GAI_APPSFLYER_API_TOKEN:-}
+      GAI_APPSFLYER_TIMEOUT: ${GAI_APPSFLYER_TIMEOUT:-8s}
+      GAI_APPSFLYER_MAX_RETRIES: ${GAI_APPSFLYER_MAX_RETRIES:-2}
+      GAI_APPSFLYER_PURCHASE_EVENTS: ${GAI_APPSFLYER_PURCHASE_EVENTS:-af_purchase}
+      GAI_APPSFLYER_MAX_RANGE_DAYS: ${GAI_APPSFLYER_MAX_RANGE_DAYS:-7}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/worker"]
+    environment:
+      GAI_ENVIRONMENT: development
+      GAI_DATABASE_DSN: gai:${MYSQL_PASSWORD:-gai_local_password}@tcp(mysql:3306)/game_ads?charset=utf8mb4&parseTime=True&loc=UTC
+      GAI_REDIS_ADDRESS: redis:6379
+      GAI_JWT_SECRET: ${JWT_SECRET:-local-demo-secret-change-before-production}
+      GAI_LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      GAI_LLM_BASE_URL: ${LLM_BASE_URL:-}
+      GAI_LLM_API_KEY: ${LLM_API_KEY:-}
+      GAI_LLM_MODEL: ${LLM_MODEL:-mock-business-v1}
+      GAI_LLM_PROMPT_DIR: configs/prompts
+      GAI_LLM_SCHEMA_DIR: configs/schemas
+      GAI_QUEUE_NAME: ${GAI_QUEUE_NAME:-business-analysis}
+      GAI_QUEUE_CONCURRENCY: ${GAI_QUEUE_CONCURRENCY:-4}
+      GAI_QUEUE_MAX_RETRY: ${GAI_QUEUE_MAX_RETRY:-3}
+      GAI_QUEUE_TASK_TIMEOUT: ${GAI_QUEUE_TASK_TIMEOUT:-2m}
+      GAI_QUEUE_RETENTION: ${GAI_QUEUE_RETENTION:-24h}
+      GAI_QUEUE_DISPATCH_INTERVAL: ${GAI_QUEUE_DISPATCH_INTERVAL:-2s}
+      GAI_QUEUE_SHUTDOWN_TIMEOUT: ${GAI_QUEUE_SHUTDOWN_TIMEOUT:-30s}
+    depends_on:
+      redis: { condition: service_healthy }
+      api: { condition: service_healthy }
+
+  ingestion-worker:
+    profiles: ["kafka"]
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/ingestion-worker"]
+    environment:
+      GAI_ENVIRONMENT: development
+      GAI_DATABASE_DSN: gai:${MYSQL_PASSWORD:-gai_local_password}@tcp(mysql:3306)/game_ads?charset=utf8mb4&parseTime=True&loc=UTC
+      GAI_JWT_SECRET: ${JWT_SECRET:-local-demo-secret-change-before-production}
+      GAI_TENANT_DEFAULT_ID: ${GAI_TENANT_DEFAULT_ID:-00000000-0000-4000-8000-000000000001}
+      GAI_KAFKA_ENABLED: ${GAI_KAFKA_ENABLED:-false}
+      GAI_KAFKA_BROKERS: ${GAI_KAFKA_BROKERS:-}
+      GAI_KAFKA_TOPICS: ${GAI_KAFKA_TOPICS:-adnova.ingestion.ad-metrics.v1,adnova.ingestion.mmp-metrics.v1,adnova.ingestion.game-revenue.v1,adnova.ingestion.creative-metrics.v1}
+      GAI_KAFKA_GROUP_ID: ${GAI_KAFKA_GROUP_ID:-adnova-ingestion-v1}
+      GAI_KAFKA_DLQ_TOPIC: ${GAI_KAFKA_DLQ_TOPIC:-adnova.ingestion.dlq.v1}
+      GAI_KAFKA_TENANT_ID: ${GAI_KAFKA_TENANT_ID:-}
+      GAI_KAFKA_PRODUCER_SYSTEM: ${GAI_KAFKA_PRODUCER_SYSTEM:-}
+      GAI_KAFKA_USERNAME: ${GAI_KAFKA_USERNAME:-}
+      GAI_KAFKA_PASSWORD: ${GAI_KAFKA_PASSWORD:-}
+      GAI_KAFKA_TLS_ENABLED: ${GAI_KAFKA_TLS_ENABLED:-true}
+      GAI_KAFKA_DEBOUNCE: ${GAI_KAFKA_DEBOUNCE:-60s}
+      GAI_KAFKA_MESSAGE_LEASE: ${GAI_KAFKA_MESSAGE_LEASE:-5m}
+      GAI_KAFKA_ANALYSIS_LEASE: ${GAI_KAFKA_ANALYSIS_LEASE:-15m}
+      GAI_KAFKA_PROCESS_RETRIES: ${GAI_KAFKA_PROCESS_RETRIES:-3}
+    depends_on:
+      api: { condition: service_healthy }
+
+  web:
+    build:
+      context: web
+      dockerfile: Dockerfile
+    ports:
+      - "${WEB_PORT:-5173}:80"
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  mysql_data:
+  redis_data:

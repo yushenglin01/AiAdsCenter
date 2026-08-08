@@ -1,0 +1,50 @@
+ALTER TABLE data_import_jobs
+  ADD COLUMN batch_id VARCHAR(128) NULL AFTER idempotency_key,
+  ADD COLUMN producer_system VARCHAR(80) NULL AFTER batch_id,
+  ADD COLUMN schema_version VARCHAR(20) NULL AFTER producer_system,
+  ADD COLUMN period_end DATE NULL AFTER period_start,
+  ADD COLUMN collected_at DATETIME(3) NULL AFTER period_end,
+  ADD KEY idx_import_batch (tenant_id, producer_system, batch_id);
+
+CREATE TABLE ingestion_messages (
+  id CHAR(36) PRIMARY KEY,
+  tenant_id CHAR(36) NOT NULL,
+  event_id VARCHAR(128) NOT NULL,
+  producer_system VARCHAR(80) NOT NULL,
+  schema_version VARCHAR(20) NOT NULL,
+  topic VARCHAR(200) NOT NULL,
+  partition_number INT NOT NULL,
+  kafka_offset BIGINT NOT NULL,
+  payload_hash CHAR(64) NOT NULL,
+  status VARCHAR(30) NOT NULL,
+  attempt_count INT NOT NULL DEFAULT 0,
+  error_code VARCHAR(80) NULL,
+  error_message TEXT NULL,
+  locked_until DATETIME(3) NULL,
+  processed_at DATETIME(3) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uidx_ingestion_event (tenant_id, producer_system, event_id),
+  UNIQUE KEY uidx_kafka_position (topic, partition_number, kafka_offset),
+  KEY idx_ingestion_status (status),
+  KEY idx_ingestion_lock (locked_until)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE analysis_windows (
+  id CHAR(36) PRIMARY KEY,
+  tenant_id CHAR(36) NOT NULL,
+  game_id CHAR(36) NOT NULL,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  received_datasets JSON NOT NULL,
+  status VARCHAR(30) NOT NULL,
+  version INT NOT NULL DEFAULT 1,
+  attempt_count INT NOT NULL DEFAULT 0,
+  next_run_at DATETIME(3) NOT NULL,
+  last_error TEXT NULL,
+  processed_at DATETIME(3) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uidx_analysis_window (tenant_id, game_id, period_start, period_end),
+  KEY idx_analysis_window_status (status),
+  KEY idx_analysis_window_next_run (next_run_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

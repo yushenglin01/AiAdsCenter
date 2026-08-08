@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adnova.local/schemas/business-agent-output-v1.0.0.json",
+  "title": "Business Agent Output",
+  "description": "Business Agent 结构化输出契约。schema_name=business-agent-output，schema_version=1.0.0。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "summary", "findings", "recommendations"],
+  "properties": {
+    "status": {"type": "string", "enum": ["HEALTHY", "CRITICAL"]},
+    "summary": {"type": "string", "minLength": 1},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "rule_code", "severity", "conclusion", "description", "evidence", "possible_causes", "impact", "confidence"],
+        "properties": {
+          "type": {"type": "string"},
+          "rule_code": {"type": "string"},
+          "severity": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+          "conclusion": {"type": "string", "minLength": 1},
+          "description": {"type": "string", "minLength": 1},
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["metric", "actual"],
+              "properties": {
+                "metric": {"type": "string"},
+                "actual": {"type": "string"},
+                "target": {"type": "string"}
+              }
+            }
+          },
+          "possible_causes": {"type": "array", "items": {"type": "string"}},
+          "impact": {"type": "string"},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "description", "priority", "risk_level", "requires_approval"],
+        "properties": {
+          "action": {"type": "string", "enum": ["REDUCE_BUDGET", "INCREASE_BUDGET", "PAUSE_RECOMMENDED", "REPLACE_CREATIVE", "VERIFY_ATTRIBUTION", "CHECK_DATA_DELAY", "ADJUST_AUDIENCE", "OBSERVE"]},
+          "description": {"type": "string", "minLength": 1},
+          "priority": {"type": "integer", "minimum": 1},
+          "risk_level": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+          "requires_approval": {"type": "boolean"},
+          "suggested_value": {"type": "string"}
+        }
+      }
+    }
+  }
+}

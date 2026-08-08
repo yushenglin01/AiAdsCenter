@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "report-agent-output/1.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["report_id", "title", "summary", "status", "generator_agent", "generator_version", "source_digest", "provenance"],
+  "properties": {
+    "report_id": {"type": "string"},
+    "title": {"type": "string"},
+    "summary": {"type": "string"},
+    "status": {"const": "READY"},
+    "generator_agent": {"const": "report-agent"},
+    "generator_version": {"type": "string"},
+    "source_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "provenance": {"type": "object"}
+  }
+}

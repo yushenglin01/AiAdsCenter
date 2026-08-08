@@ -1,0 +1,307 @@
+{
+  "game_id": "30000000-0000-4000-8000-000000000001",
+  "source": "META",
+  "file_name": "meta_ad_metrics.json",
+  "records": [
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1600,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-01",
+      "impressions": 100000,
+      "installs": 410,
+      "spend": 2600
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1588,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-02",
+      "impressions": 100800,
+      "installs": 405,
+      "spend": 2655
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1576,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-03",
+      "impressions": 101600,
+      "installs": 400,
+      "spend": 2710
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1564,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-04",
+      "impressions": 102400,
+      "installs": 395,
+      "spend": 2765
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1552,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-05",
+      "impressions": 103200,
+      "installs": 390,
+      "spend": 2820
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1540,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-06",
+      "impressions": 104000,
+      "installs": 385,
+      "spend": 2875
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1528,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-07",
+      "impressions": 104800,
+      "installs": 380,
+      "spend": 2930
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1516,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-08",
+      "impressions": 105600,
+      "installs": 375,
+      "spend": 2985
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1504,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-09",
+      "impressions": 106400,
+      "installs": 370,
+      "spend": 3040
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1492,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-10",
+      "impressions": 107200,
+      "installs": 365,
+      "spend": 3095
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1480,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-11",
+      "impressions": 108000,
+      "installs": 360,
+      "spend": 3150
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1468,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-12",
+      "impressions": 108800,
+      "installs": 355,
+      "spend": 3205
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1456,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-13",
+      "impressions": 109600,
+      "installs": 350,
+      "spend": 3260
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1444,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-14",
+      "impressions": 110400,
+      "installs": 345,
+      "spend": 3315
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1432,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-15",
+      "impressions": 111200,
+      "installs": 340,
+      "spend": 3370
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1420,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-16",
+      "impressions": 112000,
+      "installs": 335,
+      "spend": 3425
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1408,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-17",
+      "impressions": 112800,
+      "installs": 330,
+      "spend": 3480
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1396,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-18",
+      "impressions": 113600,
+      "installs": 325,
+      "spend": 3535
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1384,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-19",
+      "impressions": 114400,
+      "installs": 320,
+      "spend": 3590
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1372,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-20",
+      "impressions": 115200,
+      "installs": 315,
+      "spend": 3645
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1360,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-21",
+      "impressions": 116000,
+      "installs": 310,
+      "spend": 3700
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1348,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-22",
+      "impressions": 116800,
+      "installs": 305,
+      "spend": 3755
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1336,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-23",
+      "impressions": 117600,
+      "installs": 300,
+      "spend": 3810
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1324,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-24",
+      "impressions": 118400,
+      "installs": 295,
+      "spend": 3865
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1312,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-25",
+      "impressions": 119200,
+      "installs": 290,
+      "spend": 3920
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1300,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-26",
+      "impressions": 120000,
+      "installs": 285,
+      "spend": 3975
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1288,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-27",
+      "impressions": 120800,
+      "installs": 280,
+      "spend": 4030
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1276,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-28",
+      "impressions": 121600,
+      "installs": 275,
+      "spend": 4085
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1264,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-29",
+      "impressions": 122400,
+      "installs": 270,
+      "spend": 4140
+    },
+    {
+      "campaign_external_id": "meta-us-001",
+      "clicks": 1252,
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-30",
+      "impressions": 123200,
+      "installs": 265,
+      "spend": 4195
+    }
+  ]
+}

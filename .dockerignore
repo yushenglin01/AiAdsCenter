@@ -1,0 +1,17 @@
+.git
+.env
+.env.*
+!.env.example
+.DS_Store
+web/node_modules
+web/dist
+coverage.out
+bin
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+docs/*.docx
+scripts/build_interview_guide_docx.py
+mermaid-diagram.svg

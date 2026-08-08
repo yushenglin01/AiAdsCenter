@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data-agent-output/1.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["calculated_rows", "business_rule_findings", "data_quality", "acquisition_mode", "external_connectors"],
+  "properties": {
+    "calculated_rows": {"type": "integer", "minimum": 0},
+    "business_rule_findings": {"type": "integer", "minimum": 0},
+    "acquisition_mode": {"const": "PREVIOUSLY_IMPORTED_OR_SYNCED"},
+    "external_connectors": {"const": "NOT_INVOKED"},
+    "data_quality": {
+      "type": "object",
+      "required": ["game_id", "analysis_date", "status", "sources", "imports", "warnings"],
+      "properties": {
+        "game_id": {"type": "string"},
+        "analysis_date": {"type": "string", "format": "date"},
+        "status": {"enum": ["VALIDATED", "INCOMPLETE", "STALE", "NOT_CONFIGURED"]},
+        "sources": {"type": "array", "items": {"type": "object"}},
+        "imports": {"type": "object"},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

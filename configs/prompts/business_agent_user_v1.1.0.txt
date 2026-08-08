@@ -1,0 +1,11 @@
+---
+prompt_name: business_agent_user
+prompt_version: 1.1.0
+created_at: 2026-08-05
+updated_at: 2026-08-05
+supported_schema_version: 1.0.0
+change_reason: 纳入 Research Agent 已核验来源
+---
+
+请综合计划指标、历史基准、经营规则、归因异常、素材风险和已核验研究来源，输出经营结论与建议。
+保留输入中的原始指标值作为证据，不要执行任何建议，也不要引用输入中不存在的计划、渠道、国家、指标或外部事实。

@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS creative_daily_metrics;
+DROP TABLE IF EXISTS game_revenue_metrics;
+DROP TABLE IF EXISTS mmp_metrics;
+DROP TABLE IF EXISTS normalized_ad_metrics;
+DROP TABLE IF EXISTS raw_ad_metrics;
+DROP TABLE IF EXISTS data_import_jobs;
+DROP TABLE IF EXISTS creatives;
+DROP TABLE IF EXISTS campaigns;
+DROP TABLE IF EXISTS channels;
+DROP TABLE IF EXISTS games;

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "research-agent-output/1.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "items", "source_policy", "fabrication_disabled"],
+  "properties": {
+    "status": {"enum": ["VERIFIED_SOURCES_READY", "NO_VERIFIED_SOURCES"]},
+    "source_policy": {"const": "VERIFIED_ONLY"},
+    "fabrication_disabled": {"const": true},
+    "items": {"type": "array", "items": {"type": "object", "required": ["id", "title", "source_url", "publisher", "published_at", "verified_at"]}}
+  }
+}

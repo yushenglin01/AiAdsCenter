@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adnova.local/schemas/standard-ingestion-batch-v1.0.0.json",
+  "title": "AdNova Standard Ingestion Batch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "batch_id", "dataset_type", "source", "producer", "game_code", "timezone", "period", "collected_at", "records"],
+  "properties": {
+    "schema": {"const": "adnova.ingestion.batch"},
+    "schema_version": {"const": "1.0.0"},
+    "batch_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "dataset_type": {"enum": ["AD_METRICS", "MMP_METRICS", "GAME_REVENUE", "CREATIVE_METRICS"]},
+    "source": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,39}$"},
+    "write_mode": {"enum": ["APPEND", "REPLACE_RANGE"], "default": "APPEND"},
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system"],
+      "properties": {
+        "system": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$"},
+        "instance": {"type": "string", "maxLength": 128},
+        "version": {"type": "string", "maxLength": 64}
+      }
+    },
+    "game_code": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$"},
+    "timezone": {"const": "UTC"},
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "string", "format": "date"},
+        "end": {"type": "string", "format": "date"}
+      }
+    },
+    "collected_at": {"type": "string", "format": "date-time"},
+    "records": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {"$ref": "#/$defs/record"}}
+  },
+  "$defs": {
+    "record": {
+      "type": "object",
+      "required": ["date", "campaign_external_id", "currency"],
+      "properties": {
+        "source_record_id": {"type": "string", "maxLength": 160},
+        "date": {"type": "string", "format": "date"},
+        "channel_code": {"type": "string", "maxLength": 40},
+        "campaign_external_id": {"type": "string", "maxLength": 120},
+        "creative_external_id": {"type": "string", "maxLength": 120},
+        "country": {"type": "string", "pattern": "^[A-Z]{2}$", "default": "ZZ"},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+        "spend": {"$ref": "#/$defs/decimal"},
+        "revenue": {"$ref": "#/$defs/decimal"},
+        "revenue_d1": {"$ref": "#/$defs/decimal"},
+        "revenue_d3": {"$ref": "#/$defs/decimal"},
+        "revenue_d7": {"$ref": "#/$defs/decimal"},
+        "frequency": {"$ref": "#/$defs/frequency"},
+        "impressions": {"$ref": "#/$defs/count"},
+        "clicks": {"$ref": "#/$defs/count"},
+        "installs": {"$ref": "#/$defs/count"},
+        "activations": {"$ref": "#/$defs/count"},
+        "registrations": {"$ref": "#/$defs/count"},
+        "active_users": {"$ref": "#/$defs/count"},
+        "payers": {"$ref": "#/$defs/count"}
+      },
+      "additionalProperties": false
+    },
+    "decimal": {"oneOf": [{"type": "string", "pattern": "^[0-9]{1,14}(?:\\.[0-9]{1,6})?$"}, {"type": "number", "minimum": 0, "maximum": 99999999999999.999999, "multipleOf": 0.000001}]},
+    "frequency": {"oneOf": [{"type": "string", "pattern": "^[0-9]{1,6}(?:\\.[0-9]{1,6})?$"}, {"type": "number", "minimum": 0, "maximum": 999999.999999, "multipleOf": 0.000001}]},
+    "count": {"type": "integer", "minimum": 0}
+  },
+  "allOf": [
+    {"if": {"properties": {"write_mode": {"const": "REPLACE_RANGE"}}}, "then": {"properties": {"dataset_type": {"const": "MMP_METRICS"}}}},
+    {"if": {"properties": {"dataset_type": {"const": "AD_METRICS"}}}, "then": {"properties": {"records": {"items": {"required": ["date", "campaign_external_id", "currency", "spend", "impressions", "clicks", "installs"]}}}}},
+    {"if": {"properties": {"dataset_type": {"const": "MMP_METRICS"}}}, "then": {"properties": {"records": {"items": {"required": ["date", "campaign_external_id", "currency", "installs", "activations", "payers", "revenue"]}}}}},
+    {"if": {"properties": {"dataset_type": {"const": "GAME_REVENUE"}}}, "then": {"properties": {"records": {"items": {"required": ["date", "campaign_external_id", "currency", "registrations", "active_users", "payers", "revenue_d1", "revenue_d3", "revenue_d7"]}}}}},
+    {"if": {"properties": {"dataset_type": {"const": "CREATIVE_METRICS"}}}, "then": {"properties": {"records": {"items": {"required": ["date", "campaign_external_id", "creative_external_id", "currency", "spend", "impressions", "clicks", "installs", "frequency"]}}}}}
+  ]
+}

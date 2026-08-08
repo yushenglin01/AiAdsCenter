@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "openclaw-agent-output/1.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["channel", "workflow_start", "workflow_status", "approval_inbox", "notification_inbox", "external_delivery", "ad_platform_execution"],
+  "properties": {
+    "channel": {"const": "internal_api"},
+    "workflow_start": {"const": "READY"},
+    "workflow_status": {"const": "READY"},
+    "approval_inbox": {"const": "READY"},
+    "notification_inbox": {"const": "READY"},
+    "external_delivery": {"const": "NOT_CONFIGURED"},
+    "ad_platform_execution": {"const": "FORBIDDEN"}
+  }
+}

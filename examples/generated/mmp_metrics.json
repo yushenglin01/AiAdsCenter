@@ -1,0 +1,907 @@
+{
+  "game_id": "30000000-0000-4000-8000-000000000001",
+  "source": "APPSFLYER",
+  "file_name": "mmp_metrics.json",
+  "records": [
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-01",
+      "installs": 360,
+      "payers": 24,
+      "revenue": 2730
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-01",
+      "installs": 300,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-01",
+      "installs": 230,
+      "payers": 29,
+      "revenue": 1728
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-02",
+      "installs": 356,
+      "payers": 24,
+      "revenue": 2787
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-02",
+      "installs": 301,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-02",
+      "installs": 231,
+      "payers": 29,
+      "revenue": 1766
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-03",
+      "installs": 352,
+      "payers": 24,
+      "revenue": 2845
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-03",
+      "installs": 302,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-03",
+      "installs": 232,
+      "payers": 29,
+      "revenue": 1804
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-04",
+      "installs": 347,
+      "payers": 24,
+      "revenue": 2903
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-04",
+      "installs": 303,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-04",
+      "installs": 233,
+      "payers": 29,
+      "revenue": 1843
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-05",
+      "installs": 343,
+      "payers": 24,
+      "revenue": 2961
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-05",
+      "installs": 304,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-05",
+      "installs": 234,
+      "payers": 29,
+      "revenue": 1728
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-06",
+      "installs": 338,
+      "payers": 24,
+      "revenue": 3018
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-06",
+      "installs": 300,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-06",
+      "installs": 235,
+      "payers": 29,
+      "revenue": 1766
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-07",
+      "installs": 334,
+      "payers": 24,
+      "revenue": 3076
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-07",
+      "installs": 301,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-07",
+      "installs": 236,
+      "payers": 29,
+      "revenue": 1804
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-08",
+      "installs": 330,
+      "payers": 24,
+      "revenue": 3134
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-08",
+      "installs": 302,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-08",
+      "installs": 230,
+      "payers": 29,
+      "revenue": 1843
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-09",
+      "installs": 325,
+      "payers": 24,
+      "revenue": 3192
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-09",
+      "installs": 303,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-09",
+      "installs": 231,
+      "payers": 29,
+      "revenue": 1728
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-10",
+      "installs": 321,
+      "payers": 24,
+      "revenue": 3249
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-10",
+      "installs": 304,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-10",
+      "installs": 232,
+      "payers": 29,
+      "revenue": 1766
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-11",
+      "installs": 316,
+      "payers": 24,
+      "revenue": 3307
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-11",
+      "installs": 300,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-11",
+      "installs": 233,
+      "payers": 29,
+      "revenue": 1804
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-12",
+      "installs": 312,
+      "payers": 24,
+      "revenue": 3365
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-12",
+      "installs": 301,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-12",
+      "installs": 234,
+      "payers": 29,
+      "revenue": 1843
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-13",
+      "installs": 308,
+      "payers": 24,
+      "revenue": 3423
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-13",
+      "installs": 302,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-13",
+      "installs": 235,
+      "payers": 29,
+      "revenue": 1728
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-14",
+      "installs": 303,
+      "payers": 24,
+      "revenue": 3480
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-14",
+      "installs": 303,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-14",
+      "installs": 236,
+      "payers": 29,
+      "revenue": 1766
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-15",
+      "installs": 299,
+      "payers": 24,
+      "revenue": 3538
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-15",
+      "installs": 304,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-15",
+      "installs": 230,
+      "payers": 29,
+      "revenue": 1804
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-16",
+      "installs": 294,
+      "payers": 24,
+      "revenue": 3596
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-16",
+      "installs": 300,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-16",
+      "installs": 231,
+      "payers": 29,
+      "revenue": 1843
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-17",
+      "installs": 290,
+      "payers": 24,
+      "revenue": 3654
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-17",
+      "installs": 301,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-17",
+      "installs": 232,
+      "payers": 29,
+      "revenue": 1728
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-18",
+      "installs": 286,
+      "payers": 24,
+      "revenue": 3711
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-18",
+      "installs": 302,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-18",
+      "installs": 233,
+      "payers": 29,
+      "revenue": 1766
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-19",
+      "installs": 281,
+      "payers": 24,
+      "revenue": 3769
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-19",
+      "installs": 303,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-19",
+      "installs": 234,
+      "payers": 29,
+      "revenue": 1804
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-20",
+      "installs": 277,
+      "payers": 24,
+      "revenue": 3827
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-20",
+      "installs": 304,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-20",
+      "installs": 235,
+      "payers": 29,
+      "revenue": 1843
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-21",
+      "installs": 272,
+      "payers": 24,
+      "revenue": 3885
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-21",
+      "installs": 300,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-21",
+      "installs": 236,
+      "payers": 29,
+      "revenue": 1728
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-22",
+      "installs": 268,
+      "payers": 24,
+      "revenue": 3942
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-22",
+      "installs": 301,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-22",
+      "installs": 230,
+      "payers": 29,
+      "revenue": 1766
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-23",
+      "installs": 264,
+      "payers": 24,
+      "revenue": 4000
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-23",
+      "installs": 302,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-23",
+      "installs": 231,
+      "payers": 29,
+      "revenue": 1804
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-24",
+      "installs": 259,
+      "payers": 24,
+      "revenue": 4058
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-24",
+      "installs": 303,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-24",
+      "installs": 232,
+      "payers": 29,
+      "revenue": 1843
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-25",
+      "installs": 255,
+      "payers": 24,
+      "revenue": 4116
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-25",
+      "installs": 304,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-25",
+      "installs": 233,
+      "payers": 29,
+      "revenue": 1728
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-26",
+      "installs": 250,
+      "payers": 24,
+      "revenue": 4173
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-26",
+      "installs": 300,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-26",
+      "installs": 234,
+      "payers": 29,
+      "revenue": 1766
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-27",
+      "installs": 246,
+      "payers": 24,
+      "revenue": 4231
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-27",
+      "installs": 301,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-27",
+      "installs": 235,
+      "payers": 29,
+      "revenue": 1804
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-28",
+      "installs": 242,
+      "payers": 24,
+      "revenue": 4289
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-28",
+      "installs": 302,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-28",
+      "installs": 236,
+      "payers": 29,
+      "revenue": 1843
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-29",
+      "installs": 237,
+      "payers": 24,
+      "revenue": 4347
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-29",
+      "installs": 303,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-29",
+      "installs": 230,
+      "payers": 29,
+      "revenue": 1728
+    },
+    {
+      "activations": 280,
+      "campaign_external_id": "meta-us-001",
+      "country": "US",
+      "currency": "USD",
+      "date": "2026-07-30",
+      "installs": 233,
+      "payers": 24,
+      "revenue": 4404
+    },
+    {
+      "activations": 275,
+      "campaign_external_id": "google-jp-001",
+      "country": "JP",
+      "currency": "USD",
+      "date": "2026-07-30",
+      "installs": 304,
+      "payers": 42,
+      "revenue": 2700
+    },
+    {
+      "activations": 205,
+      "campaign_external_id": "tiktok-kr-001",
+      "country": "KR",
+      "currency": "USD",
+      "date": "2026-07-30",
+      "installs": 231,
+      "payers": 29,
+      "revenue": 1766
+    }
+  ]
+}

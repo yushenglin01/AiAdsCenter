@@ -1,0 +1,25 @@
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+coverage.out
+bin/
+web/node_modules/
+web/dist/
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+
+# Local credentials and signing material
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# Local-only generated/internal documents
+docs/*.docx
+scripts/build_interview_guide_docx.py
+/mermaid-diagram.svg

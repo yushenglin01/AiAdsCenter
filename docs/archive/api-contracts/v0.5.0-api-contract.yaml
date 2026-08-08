@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info: {title: Game Ads Intelligence API, version: 0.5.0}
+paths:
+  /api/v1/auth/login: {post: {responses: {"200": {description: Token 对}}}}
+  /api/v1/games: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/channels: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/campaigns: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/creatives: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/imports/ad-metrics: {post: {responses: {"200": {description: 已导入}}}}
+  /api/v1/metrics/overview: {get: {responses: {"200": {description: 经营总览}}}}
+  /api/v1/analysis/business: {post: {summary: 异步接收经营分析, responses: {"202": {description: 任务已接收}}}}
+  /api/v1/analysis/business/tasks: {get: {responses: {"200": {description: 任务列表}}}}
+  /api/v1/analysis/business/tasks/{id}: {get: {responses: {"200": {description: 任务与报告详情}}}}
+  /api/v1/analysis/business/tasks/{id}/events: {get: {responses: {"200": {description: SSE 任务快照}}}}
+  /api/v1/analysis/business/tasks/{id}/report: {get: {responses: {"200": {description: Markdown 报告快照}}}}
+  /api/v1/analysis/business/health: {get: {responses: {"200": {description: Provider 与工具能力}}}}

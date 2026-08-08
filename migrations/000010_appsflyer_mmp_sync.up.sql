@@ -1,0 +1,43 @@
+CREATE TABLE mmp_connections (
+  id CHAR(36) PRIMARY KEY,
+  tenant_id CHAR(36) NOT NULL,
+  game_id CHAR(36) NOT NULL,
+  provider VARCHAR(40) NOT NULL,
+  external_app_id VARCHAR(255) NOT NULL,
+  status VARCHAR(20) NOT NULL,
+  created_by CHAR(36) NOT NULL,
+  updated_by CHAR(36) NOT NULL,
+  last_sync_at DATETIME(3) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uidx_mmp_connection (tenant_id, game_id, provider),
+  KEY idx_mmp_connections_tenant_status (tenant_id, status),
+  KEY idx_mmp_connections_game (game_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE mmp_sync_runs (
+  id CHAR(36) PRIMARY KEY,
+  tenant_id CHAR(36) NOT NULL,
+  connection_id CHAR(36) NOT NULL,
+  provider VARCHAR(40) NOT NULL,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  status VARCHAR(20) NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  import_job_id CHAR(36) NULL,
+  source_rows INT NOT NULL DEFAULT 0,
+  normalized_rows INT NOT NULL DEFAULT 0,
+  skipped_rows INT NOT NULL DEFAULT 0,
+  warning_message TEXT NULL,
+  error_code VARCHAR(50) NULL,
+  error_message TEXT NULL,
+  requested_by CHAR(36) NOT NULL,
+  started_at DATETIME(3) NOT NULL,
+  finished_at DATETIME(3) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uidx_mmp_sync_key (tenant_id, idempotency_key),
+  KEY idx_mmp_sync_runs_tenant_status (tenant_id, status, created_at),
+  KEY idx_mmp_sync_runs_connection (connection_id, created_at),
+  KEY idx_mmp_sync_runs_import_job (import_job_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

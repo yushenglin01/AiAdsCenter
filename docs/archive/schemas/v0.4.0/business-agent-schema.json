@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Business Agent Output (legacy minimal contract)",
+  "type": "object",
+  "required": ["status", "summary", "findings", "recommendations"]
+}

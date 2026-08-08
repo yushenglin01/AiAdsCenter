@@ -1,0 +1,122 @@
+CREATE TABLE IF NOT EXISTS campaign_daily_metrics (
+  id CHAR(36) PRIMARY KEY,
+  tenant_id CHAR(36) NOT NULL,
+  game_id CHAR(36) NOT NULL,
+  campaign_id CHAR(36) NOT NULL,
+  date DATE NOT NULL,
+  country VARCHAR(2) NOT NULL,
+  currency VARCHAR(3) NOT NULL,
+  spend DECIMAL(20,6) NOT NULL DEFAULT 0,
+  daily_budget DECIMAL(20,6) NOT NULL DEFAULT 0,
+  impressions BIGINT NOT NULL DEFAULT 0,
+  clicks BIGINT NOT NULL DEFAULT 0,
+  installs BIGINT NOT NULL DEFAULT 0,
+  registrations BIGINT NOT NULL DEFAULT 0,
+  active_users BIGINT NOT NULL DEFAULT 0,
+  payers BIGINT NOT NULL DEFAULT 0,
+  revenue_d1 DECIMAL(20,6) NOT NULL DEFAULT 0,
+  revenue_d3 DECIMAL(20,6) NOT NULL DEFAULT 0,
+  revenue_d7 DECIMAL(20,6) NOT NULL DEFAULT 0,
+  ctr DECIMAL(20,8) NOT NULL DEFAULT 0,
+  cvr DECIMAL(20,8) NOT NULL DEFAULT 0,
+  cpi DECIMAL(20,8) NOT NULL DEFAULT 0,
+  cpa DECIMAL(20,8) NOT NULL DEFAULT 0,
+  payer_rate DECIMAL(20,8) NOT NULL DEFAULT 0,
+  roas_d1 DECIMAL(20,8) NOT NULL DEFAULT 0,
+  roas_d3 DECIMAL(20,8) NOT NULL DEFAULT 0,
+  roas_d7 DECIMAL(20,8) NOT NULL DEFAULT 0,
+  budget_consumption DECIMAL(20,8) NOT NULL DEFAULT 0,
+  ltv_d7 DECIMAL(20,8) NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NULL,
+  updated_at DATETIME(3) NULL,
+  UNIQUE KEY uidx_campaign_daily_metric (tenant_id, campaign_id, date, country),
+  KEY idx_campaign_daily_metrics_game_id (game_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS business_benchmarks (
+  id CHAR(36) PRIMARY KEY,
+  tenant_id CHAR(36) NOT NULL,
+  game_id CHAR(36) NOT NULL,
+  campaign_id CHAR(36) NOT NULL DEFAULT '',
+  metric_code VARCHAR(80) NOT NULL,
+  value DECIMAL(20,8) NOT NULL,
+  period_start DATE NULL,
+  period_end DATE NULL,
+  created_at DATETIME(3) NULL,
+  updated_at DATETIME(3) NULL,
+  UNIQUE KEY uidx_benchmark (tenant_id, game_id, campaign_id, metric_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS analysis_rules (
+  id CHAR(36) PRIMARY KEY,
+  tenant_id CHAR(36) NOT NULL,
+  code VARCHAR(80) NOT NULL,
+  category VARCHAR(40) NOT NULL,
+  name VARCHAR(160) NOT NULL,
+  severity VARCHAR(20) NOT NULL,
+  threshold DECIMAL(20,8) NOT NULL,
+  consecutive_days INT NOT NULL DEFAULT 1,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  config_json JSON NULL,
+  created_at DATETIME(3) NULL,
+  updated_at DATETIME(3) NULL,
+  deleted_at DATETIME(3) NULL,
+  UNIQUE KEY uidx_rule_code (tenant_id, code),
+  KEY idx_analysis_rules_deleted_at (deleted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS rule_findings (
+  id CHAR(36) PRIMARY KEY,
+  tenant_id CHAR(36) NOT NULL,
+  game_id CHAR(36) NOT NULL,
+  campaign_id CHAR(36) NOT NULL,
+  rule_code VARCHAR(80) NOT NULL,
+  severity VARCHAR(20) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT NOT NULL,
+  evidence JSON NULL,
+  created_at DATETIME(3) NULL,
+  KEY idx_rule_findings_tenant_id (tenant_id),
+  KEY idx_rule_findings_game_id (game_id),
+  KEY idx_rule_findings_campaign_id (campaign_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS attribution_findings (
+  id CHAR(36) PRIMARY KEY,
+  tenant_id CHAR(36) NOT NULL,
+  game_id CHAR(36) NOT NULL,
+  campaign_id CHAR(36) NOT NULL,
+  campaign_name VARCHAR(160) NOT NULL,
+  rule_code VARCHAR(80) NOT NULL,
+  severity VARCHAR(20) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT NOT NULL,
+  difference_rate DECIMAL(20,8) NOT NULL DEFAULT 0,
+  evidence JSON NULL,
+  created_at DATETIME(3) NULL,
+  KEY idx_attribution_findings_tenant_id (tenant_id),
+  KEY idx_attribution_findings_game_id (game_id),
+  KEY idx_attribution_findings_campaign_id (campaign_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS creative_findings (
+  id CHAR(36) PRIMARY KEY,
+  tenant_id CHAR(36) NOT NULL,
+  game_id CHAR(36) NOT NULL,
+  campaign_id CHAR(36) NOT NULL,
+  creative_id CHAR(36) NOT NULL,
+  creative_name VARCHAR(160) NOT NULL,
+  rule_code VARCHAR(80) NOT NULL,
+  severity VARCHAR(20) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT NOT NULL,
+  fatigue_score DECIMAL(20,8) NOT NULL DEFAULT 0,
+  ctr_change7_d DECIMAL(20,8) NOT NULL DEFAULT 0,
+  frequency DECIMAL(20,8) NOT NULL DEFAULT 0,
+  evidence JSON NULL,
+  created_at DATETIME(3) NULL,
+  KEY idx_creative_findings_tenant_id (tenant_id),
+  KEY idx_creative_findings_game_id (game_id),
+  KEY idx_creative_findings_campaign_id (campaign_id),
+  KEY idx_creative_findings_creative_id (creative_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

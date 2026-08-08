@@ -1,0 +1,9 @@
+openapi: 3.0.3
+info: {title: Game Ads Intelligence API, version: 0.1.0}
+paths:
+  /health: {get: {summary: 健康检查, responses: {"200": {description: 成功}}}}
+  /api/v1/auth/login: {post: {summary: 单公司用户名密码登录, responses: {"200": {description: Token 对}}}}
+  /api/v1/auth/refresh: {post: {summary: 刷新 Token, responses: {"200": {description: Token 对}}}}
+  /api/v1/auth/me: {get: {summary: 当前用户, responses: {"200": {description: 成功}}}}
+  /api/v1/tenants/current: {get: {summary: 当前公司, responses: {"200": {description: 成功}}}}
+  /api/v1/admin/ping: {get: {summary: ADMIN 权限探针, responses: {"200": {description: 成功}, "403": {description: 无权限}}}}

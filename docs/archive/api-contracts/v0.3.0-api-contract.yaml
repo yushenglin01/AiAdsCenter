@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info: {title: Game Ads Intelligence API, version: 0.3.0}
+paths:
+  /api/v1/auth/login: {post: {responses: {"200": {description: Token 对}}}}
+  /api/v1/games: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/channels: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/campaigns: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/creatives: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/imports/ad-metrics: {post: {responses: {"200": {description: 已导入}}}}
+  /api/v1/imports/mmp-metrics: {post: {responses: {"200": {description: 已导入}}}}
+  /api/v1/imports/game-revenue: {post: {responses: {"200": {description: 已导入}}}}
+  /api/v1/imports/creative-metrics: {post: {responses: {"200": {description: 已导入}}}}
+  /api/v1/metrics/overview: {get: {responses: {"200": {description: 经营总览}}}}
+  /api/v1/metrics/campaigns: {get: {responses: {"200": {description: 计划指标}}}}
+  /api/v1/metrics/trends: {get: {responses: {"200": {description: 日趋势}}}}
+  /api/v1/metrics/recalculate: {post: {responses: {"200": {description: 重算完成}}}}
+  /api/v1/analysis/rules: {get: {responses: {"200": {description: 规则与发现}}}}
+  /api/v1/analysis/attribution: {get: {responses: {"200": {description: 归因发现}}}}
+  /api/v1/analysis/creative: {get: {responses: {"200": {description: 素材发现}}}}

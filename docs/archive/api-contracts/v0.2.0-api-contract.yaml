@@ -1,0 +1,18 @@
+openapi: 3.0.3
+info: {title: Game Ads Intelligence API, version: 0.2.0}
+paths:
+  /health: {get: {responses: {"200": {description: 成功}}}}
+  /api/v1/auth/login: {post: {responses: {"200": {description: Token 对}}}}
+  /api/v1/auth/refresh: {post: {responses: {"200": {description: Token 对}}}}
+  /api/v1/auth/me: {get: {responses: {"200": {description: 当前用户}}}}
+  /api/v1/tenants/current: {get: {responses: {"200": {description: 当前公司}}}}
+  /api/v1/games: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/games/{id}: {get: {responses: {"200": {description: 详情}}}, put: {responses: {"200": {description: 已更新}}}}
+  /api/v1/channels: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/campaigns: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/creatives: {get: {responses: {"200": {description: 列表}}}, post: {responses: {"200": {description: 已创建}}}}
+  /api/v1/imports: {get: {responses: {"200": {description: 导入记录}}}}
+  /api/v1/imports/ad-metrics: {post: {responses: {"200": {description: 已导入或幂等命中}}}}
+  /api/v1/imports/mmp-metrics: {post: {responses: {"200": {description: 已导入或幂等命中}}}}
+  /api/v1/imports/game-revenue: {post: {responses: {"200": {description: 已导入或幂等命中}}}}
+  /api/v1/imports/creative-metrics: {post: {responses: {"200": {description: 已导入或幂等命中}}}}
