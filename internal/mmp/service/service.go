@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/example/adnova/internal/audit/domain"
@@ -24,6 +25,8 @@ import (
 
 var appIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{1,254}$`)
 
+var errSyncClaimLost = errors.New("MMP sync claim lost")
+
 type Repository interface {
 	GameExists(context.Context, string, string) (bool, error)
 	ListConnections(context.Context, string) ([]mmpdomain.Connection, error)
@@ -35,7 +38,9 @@ type Repository interface {
 	ListSyncRuns(context.Context, string) ([]mmpdomain.SyncRun, error)
 	FindSyncRunByKey(context.Context, string, string) (*mmpdomain.SyncRun, error)
 	CreateSyncRun(context.Context, *mmpdomain.SyncRun) error
-	UpdateSyncRun(context.Context, *mmpdomain.SyncRun) error
+	ClaimSyncRun(context.Context, string, string, string, time.Time, time.Time, time.Time, time.Time, string) (string, bool, error)
+	RenewSyncRunClaim(context.Context, string, string, string, time.Time) (bool, error)
+	UpdateClaimedSyncRun(context.Context, *mmpdomain.SyncRun) (bool, error)
 }
 
 type Importer interface {
@@ -49,6 +54,7 @@ type Service struct {
 	auditor      auditservice.Recorder
 	maxRangeDays map[string]int
 	syncLease    time.Duration
+	heartbeat    time.Duration
 	now          func() time.Time
 }
 
@@ -64,7 +70,7 @@ type SyncInput struct {
 }
 
 func New(repo Repository, fetchers map[string]mmpprovider.Fetcher, importer Importer, auditor auditservice.Recorder, maxRangeDays map[string]int) *Service {
-	return &Service{repo: repo, fetchers: fetchers, importer: importer, auditor: auditor, maxRangeDays: maxRangeDays, syncLease: 2 * time.Minute, now: func() time.Time { return time.Now().UTC() }}
+	return &Service{repo: repo, fetchers: fetchers, importer: importer, auditor: auditor, maxRangeDays: maxRangeDays, syncLease: 2 * time.Minute, heartbeat: 30 * time.Second, now: func() time.Time { return time.Now().UTC() }}
 }
 
 func (s *Service) ListConnections(ctx context.Context, tenantID string) ([]mmpdomain.ConnectionView, error) {
@@ -170,17 +176,18 @@ func (s *Service) Sync(ctx context.Context, input SyncInput) (*mmpdomain.SyncRun
 	appDigest := fmt.Sprintf("%x", sha256.Sum256([]byte(connection.ExternalAppID)))[:12]
 	key := fmt.Sprintf("%s:report:%s:%s:%s:%s", strings.ToLower(connection.Provider), connection.ID, appDigest, from.Format("2006-01-02"), to.Format("2006-01-02"))
 	run, findErr := s.repo.FindSyncRunByKey(ctx, input.TenantID, key)
+	started := s.now().UTC().Truncate(time.Millisecond)
 	if findErr == nil {
-		if run.Status == mmpdomain.SyncSucceeded || (run.Status == mmpdomain.SyncProcessing && s.now().Sub(run.StartedAt) <= s.syncLease) {
+		if run.Status == mmpdomain.SyncSucceeded || (run.Status == mmpdomain.SyncProcessing && syncLeaseActive(run, started, s.syncLease)) {
 			return run, nil
 		}
 	}
 	if findErr != nil && !errors.Is(findErr, repository.ErrNotFound) {
 		return nil, findErr
 	}
-	started := s.now()
+	lockedUntil := started.Add(s.syncLease)
 	if run == nil {
-		run = &mmpdomain.SyncRun{ID: uuid.NewString(), TenantID: input.TenantID, ConnectionID: connection.ID, Provider: connection.Provider, PeriodStart: from, PeriodEnd: to, Status: mmpdomain.SyncProcessing, IdempotencyKey: key, RequestedBy: input.UserID, StartedAt: started}
+		run = &mmpdomain.SyncRun{ID: uuid.NewString(), TenantID: input.TenantID, ConnectionID: connection.ID, Provider: connection.Provider, PeriodStart: from, PeriodEnd: to, Status: mmpdomain.SyncProcessing, IdempotencyKey: key, RequestedBy: input.UserID, StartedAt: started, LockedUntil: &lockedUntil, ClaimToken: uuid.NewString()}
 		if err := s.repo.CreateSyncRun(ctx, run); err != nil {
 			if existing, lookupErr := s.repo.FindSyncRunByKey(ctx, input.TenantID, key); lookupErr == nil {
 				return existing, nil
@@ -188,31 +195,54 @@ func (s *Service) Sync(ctx context.Context, input SyncInput) (*mmpdomain.SyncRun
 			return nil, fmt.Errorf("create %s sync: %w", connection.Provider, err)
 		}
 	} else {
-		run.Status, run.ErrorCode, run.ErrorMessage, run.RequestedBy, run.StartedAt, run.FinishedAt = mmpdomain.SyncProcessing, "", "", input.UserID, started, nil
-		run.ImportJobID, run.SourceRows, run.NormalizedRows, run.SkippedRows, run.WarningMessage = "", 0, 0, 0, ""
-		if err := s.repo.UpdateSyncRun(ctx, run); err != nil {
-			return nil, err
+		token, claimed, claimErr := s.repo.ClaimSyncRun(ctx, input.TenantID, run.ID, run.Status, run.StartedAt, started, started, lockedUntil, input.UserID)
+		if claimErr != nil {
+			return nil, fmt.Errorf("claim %s sync: %w", connection.Provider, claimErr)
 		}
+		if !claimed {
+			current, lookupErr := s.repo.FindSyncRunByKey(ctx, input.TenantID, key)
+			if lookupErr != nil {
+				return nil, fmt.Errorf("reload claimed %s sync: %w", connection.Provider, lookupErr)
+			}
+			return current, nil
+		}
+		run.Status, run.ErrorCode, run.ErrorMessage, run.RequestedBy, run.StartedAt, run.FinishedAt = mmpdomain.SyncProcessing, "", "", input.UserID, started, nil
+		run.LockedUntil, run.ClaimToken = &lockedUntil, token
+		run.ImportJobID, run.SourceRows, run.NormalizedRows, run.SkippedRows, run.WarningMessage = "", 0, 0, 0, ""
 	}
 
-	result, fetchErr := fetcher.Fetch(ctx, mmpprovider.FetchInput{AppID: connection.ExternalAppID, From: from, To: to})
+	executionCtx, stopHeartbeat := s.startSyncHeartbeat(ctx, run)
+	result, fetchErr := fetcher.Fetch(executionCtx, mmpprovider.FetchInput{AppID: connection.ExternalAppID, From: from, To: to})
 	if fetchErr != nil {
+		if heartbeatErr := stopHeartbeat(); heartbeatErr != nil {
+			return run, syncHeartbeatError(connection.Provider, heartbeatErr)
+		}
 		return s.failRun(ctx, run, fetchErr, input)
 	}
 	run.SourceRows, run.NormalizedRows, run.SkippedRows, run.WarningMessage = result.SourceRows, len(result.Records), result.SkippedRows, result.WarningMessage
 	data, err := json.Marshal(result.Records)
 	if err != nil {
+		if heartbeatErr := stopHeartbeat(); heartbeatErr != nil {
+			return run, syncHeartbeatError(connection.Provider, heartbeatErr)
+		}
 		return s.failRun(ctx, run, fmt.Errorf("encode normalized metrics: %w", err), input)
 	}
-	job, err := s.importer.Import(ctx, ingestionservice.ImportInput{TenantID: input.TenantID, UserID: input.UserID, GameID: connection.GameID, Source: connection.Provider, FileName: fmt.Sprintf("%s-%s-%s-%s.json", strings.ToLower(connection.Provider), appDigest, from.Format("20060102"), to.Format("20060102")), Data: data, ImportType: ingestionservice.ImportMMP, Authoritative: true, PeriodStart: from, PeriodEnd: to})
+	job, err := s.importer.Import(executionCtx, ingestionservice.ImportInput{TenantID: input.TenantID, UserID: input.UserID, GameID: connection.GameID, Source: connection.Provider, FileName: fmt.Sprintf("%s-%s-%s-%s.json", strings.ToLower(connection.Provider), appDigest, from.Format("20060102"), to.Format("20060102")), Data: data, ImportType: ingestionservice.ImportMMP, Authoritative: true, PeriodStart: from, PeriodEnd: to})
+	if heartbeatErr := stopHeartbeat(); heartbeatErr != nil {
+		return run, syncHeartbeatError(connection.Provider, heartbeatErr)
+	}
 	if err != nil {
 		return s.failRun(ctx, run, err, input)
 	}
 	run.ImportJobID = job.ID
 	finished := s.now()
 	run.Status, run.FinishedAt = mmpdomain.SyncSucceeded, &finished
-	if err := s.repo.UpdateSyncRun(ctx, run); err != nil {
+	updated, err := s.repo.UpdateClaimedSyncRun(ctx, run)
+	if err != nil {
 		return nil, err
+	}
+	if !updated {
+		return nil, apperror.New(10005, 409, connection.Provider+" 同步已被其他执行接管")
 	}
 	if err := s.repo.TouchConnection(ctx, input.TenantID, connection.ID, finished); err != nil {
 		return nil, err
@@ -238,8 +268,12 @@ func (s *Service) failRun(ctx context.Context, run *mmpdomain.SyncRun, cause err
 	default:
 		run.ErrorCode, run.ErrorMessage = "INTERNAL_ERROR", run.Provider+" 同步失败"
 	}
-	if err := s.repo.UpdateSyncRun(ctx, run); err != nil {
+	updated, err := s.repo.UpdateClaimedSyncRun(ctx, run)
+	if err != nil {
 		return nil, fmt.Errorf("record %s sync failure: %w", run.Provider, err)
+	}
+	if !updated {
+		return run, apperror.New(10005, 409, run.Provider+" 同步已被其他执行接管")
 	}
 	if s.auditor != nil {
 		if err := s.auditor.Record(ctx, domain.RecordInput{TenantID: input.TenantID, ActorID: input.UserID, ActorType: actorType(input.UserID), Action: "MMP_SYNC_FAILED", ResourceType: "MMP_SYNC_RUN", ResourceID: run.ID, After: map[string]any{"status": run.Status, "error_code": run.ErrorCode, "period_start": run.PeriodStart, "period_end": run.PeriodEnd}, Metadata: map[string]any{"provider": run.Provider, "connection_id": run.ConnectionID}, RequestID: input.RequestID, TraceID: input.TraceID, IPAddress: input.IPAddress}); err != nil {
@@ -255,6 +289,70 @@ func (s *Service) failRun(ctx context.Context, run *mmpdomain.SyncRun, cause err
 		}
 	}
 	return run, apperror.Validation(run.ErrorMessage)
+}
+
+func (s *Service) startSyncHeartbeat(parent context.Context, run *mmpdomain.SyncRun) (context.Context, func() error) {
+	executionCtx, cancel := context.WithCancel(parent)
+	stop := make(chan struct{})
+	done := make(chan error, 1)
+	interval := s.heartbeat
+	if interval <= 0 || interval >= s.syncLease {
+		interval = s.syncLease / 3
+	}
+	if interval <= 0 {
+		interval = time.Second
+	}
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				done <- nil
+				return
+			case <-executionCtx.Done():
+				done <- executionCtx.Err()
+				return
+			case <-ticker.C:
+				now := s.now().UTC().Truncate(time.Millisecond)
+				renewed, err := s.repo.RenewSyncRunClaim(executionCtx, run.TenantID, run.ID, run.ClaimToken, now.Add(s.syncLease))
+				if err != nil {
+					cancel()
+					done <- fmt.Errorf("renew %s sync claim: %w", run.Provider, err)
+					return
+				}
+				if !renewed {
+					cancel()
+					done <- errSyncClaimLost
+					return
+				}
+			}
+		}
+	}()
+	var once sync.Once
+	var heartbeatErr error
+	return executionCtx, func() error {
+		once.Do(func() {
+			close(stop)
+			heartbeatErr = <-done
+			cancel()
+		})
+		return heartbeatErr
+	}
+}
+
+func syncLeaseActive(run *mmpdomain.SyncRun, now time.Time, fallbackLease time.Duration) bool {
+	if run.LockedUntil != nil {
+		return !run.LockedUntil.Before(now)
+	}
+	return now.Sub(run.StartedAt) <= fallbackLease
+}
+
+func syncHeartbeatError(providerName string, err error) error {
+	if errors.Is(err, errSyncClaimLost) {
+		return apperror.New(10005, 409, providerName+" 同步已被其他执行接管")
+	}
+	return err
 }
 
 func (s *Service) connectionView(row mmpdomain.Connection) mmpdomain.ConnectionView {
