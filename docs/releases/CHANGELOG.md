@@ -4,12 +4,11 @@
 
 ### Added
 
-* 企业内部成员页面注册、邮箱确认与管理员角色授权流程。
-* 注册域名白名单、确认邮件 SMTP/开发日志适配器及成员申请管理页面。
+* 无。
 
 ### Changed
 
-* 登录同时支持公司邮箱和用户名，仅 ACTIVE 成员可获得 Token。
+* 无。
 
 ### Fixed
 
@@ -25,7 +24,24 @@
 
 ### Security
 
-* 邮箱确认 Token 仅存 SHA-256 摘要，注册重复响应不暴露账号是否存在；生产环境强制 HTTPS、公司域名白名单和 STARTTLS SMTP。
+* 无。
+
+## [1.3.0] - 2026-08-09
+
+### Added
+
+* 新增 Adjust Report Service 只读连接器、游戏到 App Token 映射 API 与前端配置/手工同步入口。
+* 新增 MMP Worker 自动同步，可按固定间隔扫描所有租户的 AppsFlyer/Adjust 就绪连接并滚动回看。
+
+### Changed
+
+* AppsFlyer 专用客户端契约抽象为 provider-neutral Fetcher；同步、幂等、权威区间替换、审计和安全错误分类由两种 Provider 复用。
+* MMP 手工日期上限按 Provider 独立配置，自动任务会自动收窄到对应上限。
+
+### Security
+
+* Adjust API Token 和事件指标映射只从服务端环境变量读取；数据库及 API 不保存、不返回 API Token。
+* Adjust 客户端固定官方 HTTPS Host，仅调用 GET 报表接口；系统仍不具备广告平台写操作能力。
 
 ## [1.2.0] - 2026-08-09
 

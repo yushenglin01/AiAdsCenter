@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: AdNova API
-  version: 1.2.0
+  version: 1.3.0
   description: |
     AdNova 单公司 MVP 的当前 HTTP 契约。业务响应统一使用 Envelope，除健康检查、注册流程、登录和刷新外均使用 Bearer Access Token。
     租户范围由 Token 决定；客户端可通过 X-Request-ID 和 X-Trace-ID 传递链路标识。
@@ -157,16 +157,26 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/ConfigureAppsFlyerRequest"}
+            schema: {$ref: "#/components/schemas/ConfigureMMPConnectionRequest"}
       responses: {"201": {description: 连接已保存；只返回 credential_configured 布尔值}, "400": {description: 输入无效}, "403": {description: 无权限}, "409": {description: 已成功同步的连接禁止直接更换 App ID}}
+  /api/v1/mmp-connections/adjust:
+    put:
+      summary: ADMIN/MANAGER 保存游戏到 Adjust App Token 的映射
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ConfigureMMPConnectionRequest"}
+      responses: {"201": {description: 连接已保存；只返回 credential_configured 布尔值}, "400": {description: 输入无效}, "403": {description: 无权限}, "409": {description: 已成功同步的连接禁止直接更换 App Token}}
   /api/v1/mmp-sync-runs:
     get:
-      summary: 列出租户内 AppsFlyer 同步运行
+      summary: 列出租户内 AppsFlyer/Adjust 同步运行
       security: [{bearerAuth: []}]
       responses: {"200": {description: 最近 200 个同步运行}}
   /api/v1/mmp-connections/{id}/sync:
     post:
-      summary: ADMIN/MANAGER/OPERATOR 同步最多 7 天 AppsFlyer 安装与付费事件
+      summary: ADMIN/MANAGER/OPERATOR 手工同步 MMP 安装与付费事件；AppsFlyer 最多 7 天，Adjust 最多 31 天
       security: [{bearerAuth: []}]
       parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
       requestBody:
@@ -174,7 +184,7 @@ paths:
         content:
           application/json:
             schema: {$ref: "#/components/schemas/MMPSyncRequest"}
-      responses: {"201": {description: 同步完成或命中已有幂等运行}, "400": {description: 日期、连接或导入校验失败}, "403": {description: 无权限}, "404": {description: 连接不存在或跨租户}, "429": {description: AppsFlyer 限流且有限重试耗尽}, "502": {description: AppsFlyer 暂时不可用或响应不安全}}
+      responses: {"201": {description: 同步完成或命中已有幂等运行}, "400": {description: 日期、连接或导入校验失败}, "403": {description: 无权限}, "404": {description: 连接不存在或跨租户}, "429": {description: MMP Provider 限流且有限重试耗尽}, "502": {description: MMP Provider 暂时不可用或响应不安全}}
   /api/v1/metrics/overview:
     get:
       summary: 经营指标总览
@@ -640,7 +650,7 @@ components:
       allOf:
         - {$ref: "#/components/schemas/Envelope"}
         - {type: object, properties: {data: {$ref: "#/components/schemas/OpenClawResult"}}}
-    ConfigureAppsFlyerRequest:
+    ConfigureMMPConnectionRequest:
       type: object
       additionalProperties: false
       required: [game_id, external_app_id]

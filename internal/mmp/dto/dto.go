@@ -1,6 +1,6 @@
 package dto
 
-type ConfigureAppsFlyerRequest struct {
+type ConfigureConnectionRequest struct {
 	GameID        string `json:"game_id" binding:"required"`
 	ExternalAppID string `json:"external_app_id" binding:"required"`
 	Status        string `json:"status"`

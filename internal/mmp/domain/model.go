@@ -4,6 +4,7 @@ import "time"
 
 const (
 	ProviderAppsFlyer  = "APPSFLYER"
+	ProviderAdjust     = "ADJUST"
 	ConnectionActive   = "ACTIVE"
 	ConnectionDisabled = "DISABLED"
 	SyncProcessing     = "PROCESSING"

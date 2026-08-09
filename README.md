@@ -1,17 +1,23 @@
 # AdNova · 星曜智投
 
+<p align="center">
+  <img src="docs/assets/adnova-hero.png" alt="AdNova 将多平台广告与归因数据汇聚为确定性分析、智能建议和人工审批" width="100%" />
+</p>
+
+<p align="center"><strong>让分散的买量数据，变成可验证、可解释、可审批的增长决策。</strong></p>
+
 AdNova（星曜智投）是面向海外游戏投放团队的广告经营智能分析平台。它统一接收广告平台、MMP、游戏收入与素材表现数据，由确定性代码计算指标，并由受限 Agent 生成解释、建议和审批单。
 
-当前仓库完成 **阶段十二：企业成员注册与授权**。公司成员可从页面申请账号，完成邮箱确认后由管理员分配角色并授权；只有处于 ACTIVE 状态的成员可以登录。
+当前仓库完成 **阶段十三：真实 MMP 自动拉取**。AppsFlyer 与 Adjust 共用只读连接器、权威区间导入和同步审计边界；配置服务端凭证与游戏映射后，Worker 可按计划自动回拉。
 
-当前项目版本：**1.2.0**；最近迭代：**DEV-20260809-001**。版本历史见 [迭代索引](docs/iterations/README.md) 和 [变更日志](docs/releases/CHANGELOG.md)。
+当前项目版本：**1.3.0**；最近迭代：**DEV-20260809-002**。版本历史见 [迭代索引](docs/iterations/README.md) 和 [变更日志](docs/releases/CHANGELOG.md)。
 
 ## 核心边界
 
 - 系统只生成建议与审批单，不修改广告平台预算、出价、状态或素材。
 - 关键经营指标只能由确定性代码计算，LLM 不负责算数。
 - Agent 只能调用注册 Tool，不直接访问数据库、Shell 或任意 HTTP 地址。
-- 当前采用 Go 模块化单体，不拆微服务；已接入只读 AppsFlyer Raw Data Pull，并支持第三方通过标准 HTTP/Kafka 契约推送 AF、Adjust 和广告数据；尚未接入 Meta、Google、TikTok、Adjust 原生拉取 API 或任何广告平台写入 API。
+- 当前采用 Go 模块化单体，不拆微服务；已接入只读 AppsFlyer Raw Data Pull 与 Adjust Report Service，并支持第三方通过标准 HTTP/Kafka 契约推送 MMP 和广告数据；尚未接入 Meta、Google、TikTok 原生拉取 API 或任何广告平台写入 API。
 
 ## 技术栈
 
@@ -46,7 +52,7 @@ internal/report/        确定性报告编排、摘要与溯源
 internal/openclaw/      OpenClaw 多指令交互服务
 internal/workflow/      多 Agent 工作流、步骤状态与持久化编排
 internal/notification/  OpenClaw 内部工作流消息与已读状态
-internal/mmp/           AppsFlyer 连接、Raw Data Pull、同步运行与确定性聚合
+internal/mmp/           AppsFlyer/Adjust 连接、只读拉取、同步运行与确定性聚合
 internal/llm/           Mock 与 OpenAI-compatible 结构化模型客户端
 internal/business/      Business Agent、结果校验、建议与审批请求
 internal/taskqueue/     Asynq 任务契约、投递器与消费处理器
@@ -137,9 +143,11 @@ API 用法见 [docs/api.md](docs/api.md)，架构说明见 [docs/architecture.md
 
 脚本可重复执行，不会新增重复任务或事实数据。导入完成后会同步重新计算指标、执行三类规则分析，并为 Meta 示例提交一次幂等 Mock Business Agent 异步任务。示例包含 Meta 异常样本、Google 正常对照、TikTok 扩量样本、AppsFlyer、游戏收入和素材表现；CSV 示例也位于 `examples/generated/`。
 
-Research Agent 不自由联网；用户可登记公开 HTTPS 来源，ADMIN/MANAGER 人工核验后才会进入分析上下文。OpenClaw 提供内部命令、SSE 状态流、审批 Inbox 和站内消息；外部 IM/邮件/Webhook 仍为 NOT_CONFIGURED，不会伪造投递成功。后续继续扩展 Adjust、获批研究连接器和外部通知适配器。
+Research Agent 不自由联网；用户可登记公开 HTTPS 来源，ADMIN/MANAGER 人工核验后才会进入分析上下文。OpenClaw 提供内部命令、SSE 状态流、审批 Inbox 和站内消息；外部 IM/邮件/Webhook 仍为 NOT_CONFIGURED，不会伪造投递成功。后续继续扩展广告平台只读连接器、获批研究连接器和外部通知适配器。
 
-AppsFlyer 连接使用服务端 `GAI_APPSFLYER_API_TOKEN`，前端和数据库只保存“凭证是否已配置”与游戏到 App ID 的映射，不保存或返回 Token。单次手工同步默认最多 7 天；达到 20 万行或 50MB 安全上限时拒绝导入并要求缩小日期范围。
+AppsFlyer 使用服务端 `GAI_APPSFLYER_API_TOKEN`；Adjust 使用 `GAI_ADJUST_API_TOKEN` 及激活、付费人数、收入三个事件指标 slug。前端和数据库只保存“凭证是否已配置”与游戏到 App ID/App Token 的映射，不保存或返回 API Token。单次手工同步默认分别最多 7 天和 31 天；开启 `GAI_MMP_AUTO_SYNC_ENABLED` 后，Asynq Worker 会遍历所有租户的就绪连接，按回看窗口每日吸收延迟归因修正。
+
+从空库开始接真实数据时，先关闭 Demo Seed，并使用镜像内的 `bootstrap-admin` 命令初始化公司、标准角色和首管理员。完整切换步骤、凭证清单与验收标准见 [真实数据接入准备](docs/real-data-onboarding.md)。生产模式会拒绝 Demo Seed 和演示 JWT，避免真实数据误写入演示租户。
 
 第三方接入使用 [标准批次 JSON Schema](configs/schemas/standard-ingestion-batch-v1.0.0.json)。同一份消息可调用 `POST /api/v1/imports/batches`，也可发送到配置的 Kafka Topic；示例见 [standard_mmp_batch.json](examples/generated/standard_mmp_batch.json)。接入现有 Kafka 集群时，在 `.env` 配置 `GAI_KAFKA_*`，然后启动可选 profile：
 
@@ -157,11 +165,11 @@ Compose 不内置 Kafka Broker。消费端使用 MySQL Inbox、手动 Offset 提
 
 OpenClaw 内部命令入口为 `POST /api/v1/openclaw/commands`，可启动完整分析工作流。Hermes/外部 OpenClaw HTTP 与消息推送仍保持适配边界；当前没有对应环境，因此 Agent 目录会明确标记为未配置。
 
-## 阶段十二完成情况
+## 阶段十三完成情况
 
-已完成：阶段一至十一全部能力；企业成员页面注册；公司邮箱域名白名单；限时邮箱确认链接；管理员申请列表、角色分配、授权与驳回；成员状态机、审计记录和生产 SMTP/HTTPS 配置校验。
+已完成：阶段一至十二全部能力；provider-neutral MMP 拉取边界；Adjust Report Service 只读连接器；AppsFlyer/Adjust 独立映射与手工同步入口；跨租户自动回拉、Provider 级日期上限、权威区间替换与同步审计。
 
-仍未完成：企业 SSO/SCIM、邀请制注册、找回密码、管理员强制下线；真实 Kafka 集群与 AppsFlyer 凭证联调、Adjust/广告平台原生连接器、Research 自动联网连接器、外部消息投递、生产级不可篡改审计存储、跨进程 OpenTelemetry 与真实模型联调。系统仍没有广告平台执行工具；APPROVED 仅表示人工认可建议，不表示执行。
+仍未完成：企业 SSO/SCIM、邀请制注册、找回密码、管理员强制下线；真实 Kafka 集群与 MMP 凭证联调、Meta/Google/TikTok 原生只读连接器、Research 自动联网连接器、外部消息投递、生产级不可篡改审计存储、跨进程 OpenTelemetry 与真实模型联调。系统仍没有广告平台执行工具；APPROVED 仅表示人工认可建议，不表示执行。
 
 ## 开源与安全
 

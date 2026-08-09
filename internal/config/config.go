@@ -25,6 +25,8 @@ type Config struct {
 	Queue        QueueConfig
 	Kafka        KafkaConfig
 	AppsFlyer    AppsFlyerConfig
+	Adjust       AdjustConfig
+	MMPAutoSync  MMPAutoSyncConfig
 	Registration RegistrationConfig
 }
 
@@ -107,6 +109,23 @@ type AppsFlyerConfig struct {
 	MaxRangeDays   int
 }
 
+type AdjustConfig struct {
+	BaseURL          string
+	APIToken         string
+	ActivationMetric string
+	PayerMetric      string
+	RevenueMetric    string
+	Timeout          time.Duration
+	MaxRetries       int
+	MaxRangeDays     int
+}
+
+type MMPAutoSyncConfig struct {
+	Enabled      bool
+	Interval     time.Duration
+	LookbackDays int
+}
+
 type RegistrationConfig struct {
 	Enabled             bool
 	PublicBaseURL       string
@@ -182,6 +201,17 @@ func Load() (Config, error) {
 		"appsflyer.max_retries":              2,
 		"appsflyer.purchase_events":          "af_purchase",
 		"appsflyer.max_range_days":           7,
+		"adjust.base_url":                    "https://automate.adjust.com",
+		"adjust.api_token":                   "",
+		"adjust.activation_metric":           "",
+		"adjust.payer_metric":                "",
+		"adjust.revenue_metric":              "",
+		"adjust.timeout":                     "8s",
+		"adjust.max_retries":                 2,
+		"adjust.max_range_days":              31,
+		"mmp.auto_sync.enabled":              false,
+		"mmp.auto_sync.interval":             "1h",
+		"mmp.auto_sync.lookback_days":        3,
 		"registration.enabled":               true,
 		"registration.public_base_url":       "http://localhost:5173",
 		"registration.verification_ttl":      "24h",
@@ -199,7 +229,7 @@ func Load() (Config, error) {
 	}
 
 	cfg := Config{
-		Environment: v.GetString("environment"),
+		Environment: strings.ToLower(strings.TrimSpace(v.GetString("environment"))),
 		HTTP: HTTPConfig{
 			Address:       v.GetString("http.address"),
 			AllowedOrigin: v.GetString("http.allowed_origin"),
@@ -237,6 +267,13 @@ func Load() (Config, error) {
 			PurchaseEvents: splitNonEmpty(v.GetString("appsflyer.purchase_events")),
 			MaxRangeDays:   v.GetInt("appsflyer.max_range_days"),
 		},
+		Adjust: AdjustConfig{
+			BaseURL: strings.TrimRight(strings.TrimSpace(v.GetString("adjust.base_url")), "/"), APIToken: strings.TrimSpace(v.GetString("adjust.api_token")),
+			ActivationMetric: strings.TrimSpace(v.GetString("adjust.activation_metric")), PayerMetric: strings.TrimSpace(v.GetString("adjust.payer_metric")),
+			RevenueMetric: strings.TrimSpace(v.GetString("adjust.revenue_metric")), Timeout: v.GetDuration("adjust.timeout"),
+			MaxRetries: v.GetInt("adjust.max_retries"), MaxRangeDays: v.GetInt("adjust.max_range_days"),
+		},
+		MMPAutoSync: MMPAutoSyncConfig{Enabled: v.GetBool("mmp.auto_sync.enabled"), Interval: v.GetDuration("mmp.auto_sync.interval"), LookbackDays: v.GetInt("mmp.auto_sync.lookback_days")},
 		Registration: RegistrationConfig{
 			Enabled:             v.GetBool("registration.enabled"),
 			PublicBaseURL:       strings.TrimRight(strings.TrimSpace(v.GetString("registration.public_base_url")), "/"),
@@ -256,8 +293,13 @@ func Load() (Config, error) {
 	if cfg.JWT.Secret == "" {
 		return Config{}, fmt.Errorf("GAI_JWT_SECRET must not be empty")
 	}
-	if cfg.Environment == "production" && cfg.JWT.Secret == "change-me-in-production" {
-		return Config{}, fmt.Errorf("GAI_JWT_SECRET must be changed in production")
+	if cfg.Environment == "production" {
+		if cfg.Demo.Seed {
+			return Config{}, fmt.Errorf("GAI_DEMO_SEED must be false in production")
+		}
+		if len(cfg.JWT.Secret) < 32 || cfg.JWT.Secret == "change-me-in-production" || cfg.JWT.Secret == "local-demo-secret-change-before-production" {
+			return Config{}, fmt.Errorf("GAI_JWT_SECRET must be a unique value of at least 32 characters in production")
+		}
 	}
 	if cfg.Tenant.DefaultID == "" {
 		return Config{}, fmt.Errorf("GAI_TENANT_DEFAULT_ID must not be empty")
@@ -294,6 +336,20 @@ func Load() (Config, error) {
 	}
 	if cfg.AppsFlyer.Timeout <= 0 || cfg.AppsFlyer.MaxRetries < 0 || cfg.AppsFlyer.MaxRetries > 5 || cfg.AppsFlyer.MaxRangeDays < 1 || cfg.AppsFlyer.MaxRangeDays > 31 || len(cfg.AppsFlyer.PurchaseEvents) == 0 {
 		return Config{}, fmt.Errorf("AppsFlyer configuration is invalid")
+	}
+	parsedAdjustURL, err := url.Parse(cfg.Adjust.BaseURL)
+	if err != nil || parsedAdjustURL.Scheme != "https" || parsedAdjustURL.Host != "automate.adjust.com" || parsedAdjustURL.Path != "" || parsedAdjustURL.RawQuery != "" {
+		return Config{}, fmt.Errorf("GAI_ADJUST_BASE_URL must be https://automate.adjust.com")
+	}
+	metricPattern := regexp.MustCompile(`^[a-z][a-z0-9_]{0,79}$`)
+	if cfg.Adjust.APIToken != "" && (!metricPattern.MatchString(cfg.Adjust.ActivationMetric) || !metricPattern.MatchString(cfg.Adjust.PayerMetric) || !metricPattern.MatchString(cfg.Adjust.RevenueMetric)) {
+		return Config{}, fmt.Errorf("Adjust token requires activation, payer and revenue metric slugs")
+	}
+	if cfg.Adjust.Timeout <= 0 || cfg.Adjust.MaxRetries < 0 || cfg.Adjust.MaxRetries > 5 || cfg.Adjust.MaxRangeDays < 1 || cfg.Adjust.MaxRangeDays > 31 {
+		return Config{}, fmt.Errorf("Adjust configuration is invalid")
+	}
+	if cfg.MMPAutoSync.Interval < time.Minute || cfg.MMPAutoSync.LookbackDays < 1 || cfg.MMPAutoSync.LookbackDays > 31 {
+		return Config{}, fmt.Errorf("MMP auto sync configuration is invalid")
 	}
 	if cfg.Registration.Enabled {
 		publicURL, err := url.Parse(cfg.Registration.PublicBaseURL)

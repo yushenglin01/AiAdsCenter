@@ -1,14 +1,14 @@
-# 阶段十二架构（项目 1.2.0）
+# 阶段十三架构（项目 1.3.0）
 
 当前采用模块化单体。`cmd/server` 负责 HTTP、数据库 migration 与队列投递，`cmd/worker` 运行 Asynq 消费者和 Outbox dispatcher，`cmd/ingestion-worker` 可选消费外部 Kafka 数据并触发确定性分析。业务调用方向为 Handler → Service → Repository；Handler 不访问 GORM，Repository 查询显式接收 `tenant_id`。
 
 认证使用短期 Access Token 与长期 Refresh Token。当前按单公司模式运行，登录接口不接收公司参数，账号查询只能使用服务端 `GAI_TENANT_DEFAULT_ID`。签名 Claims 仍包含 `user_id`、`tenant_id` 和角色，为数据安全边界及后续多公司扩展保留稳定结构。RBAC 在服务端中间件执行，前端守卫只用于改善体验。
 
-1.2.0 增加企业成员注册状态机：页面申请先写入 `PENDING_EMAIL`，一次性 Token 仅以 SHA-256 摘要存储；邮箱确认后进入 `PENDING_APPROVAL`，ADMIN 分配至少一个人类角色后原子切换为 `ACTIVE`。`REJECTED`、`DISABLED` 和所有待处理状态都不能签发 Token。生产环境强制配置公司邮箱域名白名单、HTTPS 公网地址和 STARTTLS SMTP；注册、确认、批准与驳回均写入租户审计记录。
+1.3.0 将 AppsFlyer 专用同步服务抽象为 provider-neutral MMP Fetcher，并增加 Adjust Report Service 只读实现。连接配置仍按 tenant/game/provider 隔离；全局 API Token 与事件指标映射只存在于服务端环境，连接查询仅返回 `credential_configured`。常驻 Worker 启动时及固定间隔扫描所有租户连接，按 Provider 最大范围执行滚动回看；SYSTEM_AGENT 发起的运行复用同一幂等、审计和权威区间导入路径。
 
 MySQL 保存业务数据、Agent 任务、事务 Outbox 和报告快照；Redis 保存 Asynq 待执行任务与重试元数据。API 启动时按文件名顺序执行 `migrations/*.up.sql`，在 `schema_migrations` 保存 SHA-256；Worker 等待 API 健康后仅打开数据库，避免并发迁移。已发布 migration 校验值变化时拒绝启动。
 
-导入边界通过统一 `DataProvider` 接口隔离，提供 CSV、JSON 和 Mock 实现。导入流程依次执行文件限制、格式解码、字段与类型校验、租户内关联解析、日期/国家/币种标准化，再在事务中写入事实表。文件级幂等键和事实表业务唯一索引共同去重；原始内容不会直接进入模型 Prompt。0.9.0 增加首个真实只读 AppsFlyer 入口，但仍没有广告平台写入能力。
+导入边界通过统一 `DataProvider` 接口隔离，提供 CSV、JSON 和 Mock 实现。导入流程依次执行文件限制、格式解码、字段与类型校验、租户内关联解析、日期/国家/币种标准化，再在事务中写入事实表。文件级幂等键和事实表业务唯一索引共同去重；原始内容不会直接进入模型 Prompt。AppsFlyer 与 Adjust 的规范化结果通过 MMP 权威区间事务替换吸收延迟事件回补，文件上传仍保持追加去重语义。
 
 1.1.0 增加 `adnova.ingestion.batch` 1.0.0 标准输入。HTTP 与 Kafka Adapter 只负责认证、传输元数据和错误映射，二者复用同一个 `ingestion.Service.ImportBatch`，因此 AF、Adjust、广告平台和业务自有数据遵循相同字段校验、游戏编码解析、事实表写入和批次幂等语义。契约强制 UTC、闭区间日期、版本、生产方与稳定 `batch_id`；单批最多 10,000 行、10MB。`REPLACE_RANGE` 只对 MMP 开放，避免广告和收入事实被第三方批次意外清空。
 
@@ -16,7 +16,7 @@ Kafka 是可选的外部数据入口，不替换内部 Asynq。每个 `ingestion
 
 每次 Kafka 成功导入都会 upsert `analysis_windows`。窗口以 tenant、game、period 唯一，合并收到的数据集并延后执行时间，从而在默认 60 秒内吸收 AF/AD/收入等相邻批次。Dispatcher 使用版本号、租约和随机 claim token 条件认领，运行已有指标、规则、归因和素材确定性流水线；处理中到达的新批次会提高版本，使旧执行结果不能把新窗口错误标记完成。Worker 崩溃后窗口会在租约到期后重新进入可认领集合，旧 Worker 即使延迟返回也因 token 失效而不能覆盖新执行状态。当前分析实现仍按整个游戏重算，日期窗口用于防抖、可恢复调度和审计，后续可在不改变接入契约的前提下演进为范围计算。
 
-AppsFlyer Token 只从 `GAI_APPSFLYER_API_TOKEN` 读取；`mmp_connections` 只保存 tenant/game/provider/App ID 映射，API 只返回 `credential_configured` 布尔状态。连接器固定访问官方 HTTPS Host，并行拉取 Raw Data Pull API v5 installs 与指定 in-app purchase events。安装首开计为 installs/activations；付费事件按 UTC 日期、campaign_id、country_code 聚合，AppsFlyer ID 去重为 payers，收入统一请求 USD。聚合结果复用现有 MMP Import Service；计划归属与租户边界校验后，在单一事务中替换相同来源、游戏和日期范围的 MMP 事实，以吸收延迟事件回补。文件上传仍保持追加去重语义。
+AppsFlyer Token 只从 `GAI_APPSFLYER_API_TOKEN` 读取；Adjust Token 与 activation/payer/revenue 指标 slug 只从 `GAI_ADJUST_*` 读取。`mmp_connections` 只保存 tenant/game/provider/App ID 或 App Token 映射，API 只返回 `credential_configured` 布尔状态。连接器固定访问官方 HTTPS Host：AppsFlyer 并行拉取 Raw Data Pull API v5 installs 与指定 in-app purchase events；Adjust 拉取 Report Service 的 day/campaign/country/currency 聚合报表。两者统一转换为 installs、activations、payers、revenue 后复用 MMP Import Service。
 
 `mmp_sync_runs` 将上游拉取状态与导入任务分离，保存日期范围、源行数、聚合行数、跳过数、import_job_id 和安全错误分类。连接+日期范围构成幂等键；已有成功/处理中运行直接返回，失败运行允许在同一逻辑 ID 上重试。单次最多 7 天，达到 20 万行或 50MB 时拒绝导入，防止截断数据进入经营指标。Token、完整原始报告和上游错误正文不持久化。
 
@@ -46,7 +46,7 @@ Dashboard 运营汇总、模型用量和审计查询都以 tenant_id 为首要�
 
 1.0.0 增加 research_sources 审核状态机。来源登记必须提供无凭证 HTTPS URL、发布方、发布日期与摘要，初始为 PENDING；ADMIN/MANAGER 核验后变为 VERIFIED。Research Agent 只读取当前租户、游戏/计划范围和 analysis_date 之前的 VERIFIED 来源，没有来源时返回 NO_VERIFIED_SOURCES，不生成市场事实。Business Prompt 1.1.0 明确研究来源只能解释背景，不能替代确定性指标证据。
 
-Data Agent 在重算前读取四类事实表和导入任务，输出行数、计划覆盖、最新日期、缺失/陈旧状态与失败导入数。它不会隐式触发外部同步，数据获取仍由显式导入或 AppsFlyer 同步入口负责，避免分析请求产生不可预期的外部副作用。
+Data Agent 在重算前读取四类事实表和导入任务，输出行数、计划覆盖、最新日期、缺失/陈旧状态与失败导入数。它不会隐式触发外部同步；数据获取由显式导入、手工 MMP 同步或独立 Worker 定时任务负责，避免分析请求产生不可预期的外部副作用。
 
 报告由 `internal/report` 的确定性 Composer 生成，保存 report-agent 版本、研究来源 ID、SHA-256 source digest、workflow/task 标识和生成时间。Report Agent 返回这些溯源字段；报告中的外部链接只来自 VERIFIED 来源。
 

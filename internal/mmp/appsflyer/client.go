@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode"
 
+	mmpprovider "github.com/example/adnova/internal/mmp/provider"
 	"github.com/example/adnova/pkg/provider"
 	"github.com/shopspring/decimal"
 )
@@ -40,25 +41,9 @@ type Client struct {
 	wait           func(context.Context, time.Duration) error
 }
 
-type FetchInput struct {
-	AppID string
-	From  time.Time
-	To    time.Time
-}
-
-type FetchResult struct {
-	Records        []provider.Record
-	SourceRows     int
-	SkippedRows    int
-	WarningMessage string
-}
-
-type ProviderError struct {
-	Code    string
-	Message string
-}
-
-func (e *ProviderError) Error() string { return e.Message }
+type FetchInput = mmpprovider.FetchInput
+type FetchResult = mmpprovider.FetchResult
+type ProviderError = mmpprovider.Error
 
 func New(cfg Config) *Client {
 	return &Client{

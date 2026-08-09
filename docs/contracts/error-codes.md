@@ -10,8 +10,8 @@
 | 404 | NOT_FOUND | 资源不存在或不属于当前公司 | 否 |
 | 409 | CONFLICT | 状态转换冲突、审批已决策或并发冲突 | 读取最新状态后 |
 | 422 | VALIDATION_FAILED | 导入、业务参数或 Agent 输出校验失败 | 修正数据后 |
-| 429 | PROVIDER_RATE_LIMIT | 外部模型或 AppsFlyer 限流 | 是，有限退避 |
-| 502 | UPSTREAM_INVALID_OR_UNAVAILABLE | AppsFlyer 不可用、响应无法验证或达到安全上限 | 缩小范围或稍后重试 |
+| 429 | PROVIDER_RATE_LIMIT | 外部模型、AppsFlyer 或 Adjust 限流 | 是，有限退避 |
+| 502 | UPSTREAM_INVALID_OR_UNAVAILABLE | MMP Provider 不可用、响应无法验证或达到安全上限 | 缩小范围或稍后重试 |
 | 500 | INTERNAL_ERROR | 未分类服务端错误 | 谨慎重试 |
 | 503 | DEPENDENCY_UNAVAILABLE | MySQL、Redis 或外部模型不可用 | 是 |
 

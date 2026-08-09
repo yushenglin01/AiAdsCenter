@@ -1,4 +1,4 @@
-# 阶段十二 API（项目 1.2.0）
+# 阶段十三 API（项目 1.3.0）
 
 所有业务 API 使用 `/api/v1` 前缀，响应格式为 `{ code, message, data, request_id }`。
 
@@ -118,8 +118,9 @@ Token 响应的 `data`：
 | GET | `/api/v1/imports`、`/imports/:id` | 登录用户 | 导入记录 |
 | GET | `/api/v1/mmp-connections` | 登录用户 | MMP 连接、凭证配置布尔状态与健康；不返回 Token |
 | PUT | `/api/v1/mmp-connections/appsflyer` | ADMIN/MANAGER | 保存游戏到 AppsFlyer App ID 的映射 |
-| GET | `/api/v1/mmp-sync-runs` | 登录用户 | AppsFlyer 同步运行、行数、告警和安全错误分类 |
-| POST | `/api/v1/mmp-connections/:id/sync` | ADMIN/MANAGER/OPERATOR | 同步最多 7 天安装与指定付费事件 |
+| PUT | `/api/v1/mmp-connections/adjust` | ADMIN/MANAGER | 保存游戏到 Adjust App Token 的映射 |
+| GET | `/api/v1/mmp-sync-runs` | 登录用户 | AppsFlyer/Adjust 同步运行、行数、告警和安全错误分类 |
+| POST | `/api/v1/mmp-connections/:id/sync` | ADMIN/MANAGER/OPERATOR | 手工同步；AppsFlyer 最多 7 天，Adjust 最多 31 天 |
 | POST | `/api/v1/metrics/recalculate?game_id=...` | ADMIN/MANAGER/OPERATOR/ANALYST | 重算指标并执行三类分析 |
 | GET | `/api/v1/metrics/overview` | 登录用户 | 经营总览与去重风险计数 |
 | GET | `/api/v1/metrics/campaigns`、`/campaigns/:id` | 登录用户 | 计划聚合指标与详情 |
@@ -289,4 +290,6 @@ AppsFlyer 连接配置示例：
 }
 ```
 
-同步请求为 `{ "from": "2026-08-01", "to": "2026-08-03" }`。连接器并行读取官方 Raw Data Pull API v5 的 `installs_report` 和 `in_app_events_report`，以 UTC 日期和 USD 聚合；campaign_id 必须能匹配当前租户的广告计划。相同连接和日期范围重复提交返回已有成功运行。未配置 `GAI_APPSFLYER_API_TOKEN`、达到 20 万行/50MB、负收入或计划未映射时明确失败。
+Adjust 使用同一请求结构，其中 `external_app_id` 填写 Adjust App Token。同步请求为 `{ "from": "2026-08-01", "to": "2026-08-03" }`。AppsFlyer 连接器并行读取 Raw Data Pull API v5 的 `installs_report` 和 `in_app_events_report`；Adjust 连接器读取 Report Service API，并使用配置的 activation、payer、revenue 指标 slug。两者都按 UTC 日期和 USD 确定性聚合；campaign_id 必须能匹配当前租户的广告计划。相同连接和日期范围重复提交返回已有成功运行，成功导入会事务性替换同来源、游戏、日期范围的 MMP 指标以吸收延迟归因修正。
+
+自动拉取由常驻 Worker 执行。设置 `GAI_MMP_AUTO_SYNC_ENABLED=true`、`GAI_MMP_AUTO_SYNC_INTERVAL=1h` 与 `GAI_MMP_AUTO_SYNC_LOOKBACK_DAYS=3` 后，Worker 启动时立即执行一次，之后按间隔扫描所有租户的 ACTIVE/READY 连接；同一连接和滚动窗口命中同步幂等键时不会再次请求上游，失败连接会在下一轮重试。实际窗口会自动限制在 Provider 的最大范围内。API Token 和 Adjust 事件指标映射只从服务端环境变量读取。

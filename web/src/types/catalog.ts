@@ -9,11 +9,11 @@ export interface ImportJob {
   total_rows: number; imported_rows: number; skipped_rows: number; error_message?: string; created_at: string
 }
 export interface MMPConnection {
-  id: string; game_id: string; provider: 'APPSFLYER'; external_app_id: string; status: 'ACTIVE' | 'DISABLED';
+  id: string; game_id: string; provider: 'APPSFLYER' | 'ADJUST'; external_app_id: string; status: 'ACTIVE' | 'DISABLED';
   credential_configured: boolean; health: 'READY' | 'NOT_CONFIGURED' | 'DISABLED'; last_sync_at?: string; created_at: string; updated_at: string
 }
 export interface MMPSyncRun {
-  id: string; connection_id: string; provider: 'APPSFLYER'; period_start: string; period_end: string;
+  id: string; connection_id: string; provider: 'APPSFLYER' | 'ADJUST'; period_start: string; period_end: string;
   status: 'PROCESSING' | 'SUCCEEDED' | 'FAILED'; import_job_id?: string; source_rows: number; normalized_rows: number; skipped_rows: number;
   warning_message?: string; error_code?: string; error_message?: string; started_at: string; finished_at?: string
 }

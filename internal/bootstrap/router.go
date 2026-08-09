@@ -48,10 +48,7 @@ import (
 	metricsrepo "github.com/example/adnova/internal/metrics/repository"
 	metricsservice "github.com/example/adnova/internal/metrics/service"
 	appmiddleware "github.com/example/adnova/internal/middleware"
-	mmpappsflyer "github.com/example/adnova/internal/mmp/appsflyer"
 	mmphandler "github.com/example/adnova/internal/mmp/handler"
-	mmprepo "github.com/example/adnova/internal/mmp/repository"
-	mmpservice "github.com/example/adnova/internal/mmp/service"
 	modelusagehandler "github.com/example/adnova/internal/modelusage/handler"
 	modelusagerepo "github.com/example/adnova/internal/modelusage/repository"
 	modelusageservice "github.com/example/adnova/internal/modelusage/service"
@@ -136,8 +133,7 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	approvalHandler := approvalhandler.New(approvalService)
 	workflowService := workflowservice.New(workflowrepo.New(db), agentRegistry, businessService, notificationService)
 	workflowHandler := workflowhandler.New(workflowService, openclawservice.New(workflowService, approvalService, notificationService))
-	appsFlyerClient := mmpappsflyer.New(mmpappsflyer.Config{BaseURL: cfg.AppsFlyer.BaseURL, Token: cfg.AppsFlyer.APIToken, Timeout: cfg.AppsFlyer.Timeout, MaxRetries: cfg.AppsFlyer.MaxRetries, PurchaseEvents: cfg.AppsFlyer.PurchaseEvents})
-	mmpHandler := mmphandler.New(mmpservice.New(mmprepo.New(db), appsFlyerClient, ingestionService, auditService, cfg.AppsFlyer.MaxRangeDays))
+	mmpHandler := mmphandler.New(NewMMPService(cfg, db))
 	auditHandler := audithandler.New(auditService)
 	recommendationHandler := recommendationhandler.New(recommendationservice.New(recommendationrepo.New(db)))
 	modelUsageHandler := modelusagehandler.New(modelusageservice.New(modelusagerepo.New(db)))
@@ -180,6 +176,7 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	authenticated.POST("/imports/batches", appmiddleware.RequireRoles("ADMIN", "MANAGER", "OPERATOR"), ingestionHandler.ImportBatch)
 	authenticated.GET("/mmp-connections", mmpHandler.ListConnections)
 	authenticated.PUT("/mmp-connections/appsflyer", appmiddleware.RequireRoles("ADMIN", "MANAGER"), mmpHandler.ConfigureAppsFlyer)
+	authenticated.PUT("/mmp-connections/adjust", appmiddleware.RequireRoles("ADMIN", "MANAGER"), mmpHandler.ConfigureAdjust)
 	authenticated.GET("/mmp-sync-runs", mmpHandler.ListSyncRuns)
 	authenticated.POST("/mmp-connections/:id/sync", appmiddleware.RequireRoles("ADMIN", "MANAGER", "OPERATOR"), mmpHandler.Sync)
 	authenticated.GET("/metrics/overview", metricsHandler.Overview)
