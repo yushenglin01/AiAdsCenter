@@ -98,3 +98,28 @@ func TestAdjustAndAutoSyncConfiguration(t *testing.T) {
 	require.True(t, cfg.MMPAutoSync.Enabled)
 	require.Equal(t, 30*time.Minute, cfg.MMPAutoSync.Interval)
 }
+
+func TestWebSearchCanBeConfiguredWithoutExposingDefaults(t *testing.T) {
+	t.Setenv("GAI_WEB_SEARCH_API_KEY", "server-only-key")
+	t.Setenv("GAI_WEB_SEARCH_MAX_RESULTS", "10")
+	t.Setenv("GAI_WEB_SEARCH_IMPORT_ENABLED", "true")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, "brave", cfg.WebSearch.Provider)
+	require.Equal(t, "server-only-key", cfg.WebSearch.APIKey)
+	require.Equal(t, 10, cfg.WebSearch.MaxResults)
+	require.True(t, cfg.WebSearch.ImportEnabled)
+}
+
+func TestWebSearchImportRequiresCredential(t *testing.T) {
+	t.Setenv("GAI_WEB_SEARCH_API_KEY", "")
+	t.Setenv("GAI_WEB_SEARCH_IMPORT_ENABLED", "true")
+	_, err := Load()
+	require.ErrorContains(t, err, "requires a configured provider API key")
+}
+
+func TestWebSearchRejectsUnexpectedBaseURL(t *testing.T) {
+	t.Setenv("GAI_WEB_SEARCH_BASE_URL", "https://example.com")
+	_, err := Load()
+	require.ErrorContains(t, err, "https://api.search.brave.com")
+}

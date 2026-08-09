@@ -55,6 +55,20 @@ func (r *Repository) List(ctx context.Context, tenantID string, limit int) ([]do
 	return rows, err
 }
 
+func (r *Repository) ListAgentSteps(ctx context.Context, tenantID string, limit int) ([]domain.AgentTaskSnapshot, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 300
+	}
+	var rows []domain.AgentTaskSnapshot
+	err := r.db.WithContext(ctx).Table("workflow_steps AS ws").
+		Select("ws.agent_name, ws.workflow_id, wr.status AS workflow_status, wr.campaign_id, COALESCE(c.name, wr.campaign_id) AS campaign_name, wr.trace_id, ws.status, ws.execution_mode, ws.started_at, ws.finished_at, ws.updated_at").
+		Joins("JOIN workflow_runs AS wr ON BINARY wr.tenant_id = BINARY ws.tenant_id AND BINARY wr.id = BINARY ws.workflow_id").
+		Joins("LEFT JOIN campaigns AS c ON BINARY c.tenant_id = BINARY wr.tenant_id AND BINARY c.id = BINARY wr.campaign_id AND c.deleted_at IS NULL").
+		Where("ws.tenant_id = ?", tenantID).
+		Order("ws.updated_at DESC").Limit(limit).Scan(&rows).Error
+	return rows, err
+}
+
 func (r *Repository) StartStep(ctx context.Context, tenantID, workflowID, agentName string, input json.RawMessage) error {
 	now := time.Now().UTC()
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

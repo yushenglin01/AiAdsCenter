@@ -52,3 +52,24 @@ type Details struct {
 	Run   Run    `json:"workflow"`
 	Steps []Step `json:"steps"`
 }
+
+type AgentTaskSnapshot struct {
+	AgentName      string     `json:"agent_name"`
+	WorkflowID     string     `json:"workflow_id"`
+	WorkflowStatus string     `json:"workflow_status"`
+	CampaignID     string     `json:"campaign_id"`
+	CampaignName   string     `json:"campaign_name"`
+	TraceID        string     `json:"trace_id,omitempty"`
+	Status         string     `json:"status"`
+	ExecutionMode  string     `json:"execution_mode"`
+	StartedAt      *time.Time `json:"started_at,omitempty"`
+	FinishedAt     *time.Time `json:"finished_at,omitempty"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+type AgentRuntime struct {
+	AgentName     string              `json:"agent_name"`
+	RuntimeStatus string              `json:"runtime_status"`
+	ActiveTasks   []AgentTaskSnapshot `json:"active_tasks"`
+	LastTask      *AgentTaskSnapshot  `json:"last_task,omitempty"`
+}

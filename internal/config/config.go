@@ -27,6 +27,7 @@ type Config struct {
 	AppsFlyer    AppsFlyerConfig
 	Adjust       AdjustConfig
 	MMPAutoSync  MMPAutoSyncConfig
+	WebSearch    WebSearchConfig
 	Registration RegistrationConfig
 }
 
@@ -126,6 +127,16 @@ type MMPAutoSyncConfig struct {
 	LookbackDays int
 }
 
+type WebSearchConfig struct {
+	Provider      string
+	BaseURL       string
+	APIKey        string
+	Timeout       time.Duration
+	MaxResults    int
+	SafeSearch    string
+	ImportEnabled bool
+}
+
 type RegistrationConfig struct {
 	Enabled             bool
 	PublicBaseURL       string
@@ -212,6 +223,13 @@ func Load() (Config, error) {
 		"mmp.auto_sync.enabled":              false,
 		"mmp.auto_sync.interval":             "1h",
 		"mmp.auto_sync.lookback_days":        3,
+		"web_search.provider":                "brave",
+		"web_search.base_url":                "https://api.search.brave.com",
+		"web_search.api_key":                 "",
+		"web_search.timeout":                 "8s",
+		"web_search.max_results":             8,
+		"web_search.safe_search":             "strict",
+		"web_search.import_enabled":          false,
 		"registration.enabled":               true,
 		"registration.public_base_url":       "http://localhost:5173",
 		"registration.verification_ttl":      "24h",
@@ -274,6 +292,11 @@ func Load() (Config, error) {
 			MaxRetries: v.GetInt("adjust.max_retries"), MaxRangeDays: v.GetInt("adjust.max_range_days"),
 		},
 		MMPAutoSync: MMPAutoSyncConfig{Enabled: v.GetBool("mmp.auto_sync.enabled"), Interval: v.GetDuration("mmp.auto_sync.interval"), LookbackDays: v.GetInt("mmp.auto_sync.lookback_days")},
+		WebSearch: WebSearchConfig{
+			Provider: strings.ToLower(strings.TrimSpace(v.GetString("web_search.provider"))), BaseURL: strings.TrimRight(strings.TrimSpace(v.GetString("web_search.base_url")), "/"),
+			APIKey: strings.TrimSpace(v.GetString("web_search.api_key")), Timeout: v.GetDuration("web_search.timeout"), MaxResults: v.GetInt("web_search.max_results"),
+			SafeSearch: strings.ToLower(strings.TrimSpace(v.GetString("web_search.safe_search"))), ImportEnabled: v.GetBool("web_search.import_enabled"),
+		},
 		Registration: RegistrationConfig{
 			Enabled:             v.GetBool("registration.enabled"),
 			PublicBaseURL:       strings.TrimRight(strings.TrimSpace(v.GetString("registration.public_base_url")), "/"),
@@ -350,6 +373,22 @@ func Load() (Config, error) {
 	}
 	if cfg.MMPAutoSync.Interval < time.Minute || cfg.MMPAutoSync.LookbackDays < 1 || cfg.MMPAutoSync.LookbackDays > 31 {
 		return Config{}, fmt.Errorf("MMP auto sync configuration is invalid")
+	}
+	if cfg.WebSearch.Provider != "disabled" && cfg.WebSearch.Provider != "brave" {
+		return Config{}, fmt.Errorf("GAI_WEB_SEARCH_PROVIDER must be disabled or brave")
+	}
+	parsedWebSearchURL, err := url.Parse(cfg.WebSearch.BaseURL)
+	if err != nil || parsedWebSearchURL.Scheme != "https" || parsedWebSearchURL.Host != "api.search.brave.com" || parsedWebSearchURL.Path != "" || parsedWebSearchURL.RawQuery != "" {
+		return Config{}, fmt.Errorf("GAI_WEB_SEARCH_BASE_URL must be https://api.search.brave.com")
+	}
+	if cfg.WebSearch.Timeout <= 0 || cfg.WebSearch.Timeout > 30*time.Second || cfg.WebSearch.MaxResults < 1 || cfg.WebSearch.MaxResults > 20 {
+		return Config{}, fmt.Errorf("web search timing or result limit configuration is invalid")
+	}
+	if cfg.WebSearch.SafeSearch != "off" && cfg.WebSearch.SafeSearch != "moderate" && cfg.WebSearch.SafeSearch != "strict" {
+		return Config{}, fmt.Errorf("GAI_WEB_SEARCH_SAFE_SEARCH must be off, moderate or strict")
+	}
+	if cfg.WebSearch.ImportEnabled && (cfg.WebSearch.Provider != "brave" || cfg.WebSearch.APIKey == "") {
+		return Config{}, fmt.Errorf("web search import requires a configured provider API key")
 	}
 	if cfg.Registration.Enabled {
 		publicURL, err := url.Parse(cfg.Registration.PublicBaseURL)

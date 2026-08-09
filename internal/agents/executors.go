@@ -10,6 +10,7 @@ import (
 	businessservice "github.com/example/adnova/internal/business/service"
 	dataqualitydomain "github.com/example/adnova/internal/dataquality/domain"
 	researchdomain "github.com/example/adnova/internal/research/domain"
+	"github.com/example/adnova/internal/research/websearch"
 )
 
 type MetricCalculator interface {
@@ -26,6 +27,10 @@ type DataProfiler interface {
 
 type ResearchReader interface {
 	SearchVerified(ctx context.Context, tenantID, gameID, campaignID, analysisDate string) ([]researchdomain.Evidence, error)
+}
+
+type ResearchWebCapability interface {
+	WebCapability() websearch.Capability
 }
 
 type AnalysisPayload struct {
@@ -172,12 +177,16 @@ func (e *ReportExecutor) Capabilities(context.Context) []string {
 	return []string{"get_analysis_report", "format_markdown_snapshot"}
 }
 
-type ResearchExecutor struct{ reader ResearchReader }
+type ResearchExecutor struct {
+	reader ResearchReader
+	web    ResearchWebCapability
+}
 
 func NewResearchExecutor(readers ...ResearchReader) *ResearchExecutor {
 	result := &ResearchExecutor{}
 	if len(readers) > 0 {
 		result.reader = readers[0]
+		result.web, _ = readers[0].(ResearchWebCapability)
 	}
 	return result
 }
@@ -206,10 +215,28 @@ func (e *ResearchExecutor) Health(context.Context) (*agentdomain.HealthStatus, e
 	if e.reader == nil {
 		return &agentdomain.HealthStatus{Status: "DEGRADED", Provider: "none", Details: []string{"verified_source_repository_not_configured"}}, nil
 	}
-	return &agentdomain.HealthStatus{Status: "UP", Provider: "verified-source-repository", Details: []string{"manual_source_registration", "human_verification", "source_preserving"}}, nil
+	details := []string{"manual_source_registration", "human_verification", "source_preserving"}
+	provider := "verified-source-repository"
+	if e.web != nil {
+		capability := e.web.WebCapability()
+		if capability.Configured {
+			provider += "+" + capability.Provider
+			details = append(details, "live_web_search_ready")
+		} else {
+			details = append(details, "live_web_connector_not_configured")
+		}
+	}
+	return &agentdomain.HealthStatus{Status: "UP", Provider: provider, Details: details}, nil
 }
 func (e *ResearchExecutor) Capabilities(context.Context) []string {
-	return []string{"list_verified_sources", "source_contract", "preserve_provenance"}
+	capabilities := []string{"list_verified_sources", "source_contract", "preserve_provenance"}
+	if e.web != nil && e.web.WebCapability().Configured {
+		capabilities = append(capabilities, "search_public_web")
+	}
+	if e.web != nil && e.web.WebCapability().ImportEnabled {
+		capabilities = append(capabilities, "import_web_result_for_review")
+	}
+	return capabilities
 }
 
 type OpenClawExecutor struct{}

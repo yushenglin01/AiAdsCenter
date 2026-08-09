@@ -143,7 +143,7 @@ API 用法见 [docs/api.md](docs/api.md)，架构说明见 [docs/architecture.md
 
 脚本可重复执行，不会新增重复任务或事实数据。导入完成后会同步重新计算指标、执行三类规则分析，并为 Meta 示例提交一次幂等 Mock Business Agent 异步任务。示例包含 Meta 异常样本、Google 正常对照、TikTok 扩量样本、AppsFlyer、游戏收入和素材表现；CSV 示例也位于 `examples/generated/`。
 
-Research Agent 不自由联网；用户可登记公开 HTTPS 来源，ADMIN/MANAGER 人工核验后才会进入分析上下文。OpenClaw 提供内部命令、SSE 状态流、审批 Inbox 和站内消息；外部 IM/邮件/Webhook 仍为 NOT_CONFIGURED，不会伪造投递成功。后续继续扩展广告平台只读连接器、获批研究连接器和外部通知适配器。
+Research Agent 支持通过可选的 Brave Search API 实时检索公开网页；API Key 只保存在服务端，结果默认不持久化。启用结果入库后，用户可把选中结果登记为 PENDING 来源，仍需 ADMIN/MANAGER 人工核验后才会进入分析上下文。OpenClaw 提供内部命令、SSE 状态流、审批 Inbox 和站内消息；外部 IM/邮件/Webhook 仍为 NOT_CONFIGURED，不会伪造投递成功。
 
 AppsFlyer 使用服务端 `GAI_APPSFLYER_API_TOKEN`；Adjust 使用 `GAI_ADJUST_API_TOKEN` 及激活、付费人数、收入三个事件指标 slug。前端和数据库只保存“凭证是否已配置”与游戏到 App ID/App Token 的映射，不保存或返回 API Token。单次手工同步默认分别最多 7 天和 31 天；开启 `GAI_MMP_AUTO_SYNC_ENABLED` 后，Asynq Worker 会遍历所有租户的就绪连接，按回看窗口每日吸收延迟归因修正。
 
@@ -169,7 +169,7 @@ OpenClaw 内部命令入口为 `POST /api/v1/openclaw/commands`，可启动完�
 
 已完成：阶段一至十二全部能力；provider-neutral MMP 拉取边界；Adjust Report Service 只读连接器；AppsFlyer/Adjust 独立映射与手工同步入口；跨租户自动回拉、Provider 级日期上限、权威区间替换与同步审计。
 
-仍未完成：企业 SSO/SCIM、邀请制注册、找回密码、管理员强制下线；真实 Kafka 集群与 MMP 凭证联调、Meta/Google/TikTok 原生只读连接器、Research 自动联网连接器、外部消息投递、生产级不可篡改审计存储、跨进程 OpenTelemetry 与真实模型联调。系统仍没有广告平台执行工具；APPROVED 仅表示人工认可建议，不表示执行。
+仍未完成：企业 SSO/SCIM、邀请制注册、找回密码、管理员强制下线；真实 Kafka 集群与 MMP 凭证联调、Meta/Google/TikTok 原生只读连接器、自动化 Research 定时任务、外部消息投递、生产级不可篡改审计存储、跨进程 OpenTelemetry 与真实模型联调。系统仍没有广告平台执行工具；APPROVED 仅表示人工认可建议，不表示执行。
 
 ## 开源与安全
 

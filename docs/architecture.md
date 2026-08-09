@@ -20,6 +20,8 @@ AppsFlyer Token 只从 `GAI_APPSFLYER_API_TOKEN` 读取；Adjust Token 与 activ
 
 `mmp_sync_runs` 将上游拉取状态与导入任务分离，保存日期范围、源行数、聚合行数、跳过数、import_job_id 和安全错误分类。连接+日期范围构成幂等键；已有成功/处理中运行直接返回，失败运行允许在同一逻辑 ID 上重试。单次最多 7 天，达到 20 万行或 50MB 时拒绝导入，防止截断数据进入经营指标。Token、完整原始报告和上游错误正文不持久化。
 
+MMP 同步执行使用数据库 `claim_token + locked_until` 原子抢占，运行期间由当前执行者定期续租。多 Worker 同时启动自动同步时只有持有令牌的执行者能够继续导入并写入成功或失败终态；租约丢失会取消当前上下文，Worker 崩溃后则可在租约到期后安全接管。令牌属于内部 fencing 信息，不通过 API 返回。
+
 所有 HTTP 请求生成或透传 `X-Request-ID` 与 `X-Trace-ID`，Zap 记录结构化请求日志。OpenTelemetry SDK 与跨进程 Trace 将在任务链路落地阶段接入。
 
 阶段三分析流水线依次执行指标重算、经营规则、归因差异和素材疲劳分析。指标使用十进制定点数与安全除法，分母为零时返回零，统一保留 8 位精度。规则阈值存储在 `analysis_rules`，ADMIN/MANAGER 可修改阈值、连续天数和启停状态。每条发现保存生成时的证据 JSON，前端只展示结果，不重新计算。
@@ -45,6 +47,10 @@ Dashboard 运营汇总、模型用量和审计查询都以 tenant_id 为首要�
 0.7.0 增加统一 Agent Registry 和持久化 Workflow Orchestrator。完整分析按 OpenClaw、Data、Attribution、Creative、Research、Business、Report 顺序记录七个步骤；Data 先重算指标并物化经营规则，归因和素材 Agent 继续执行确定性分析，Business Agent 通过原有 Outbox/Asynq 异步运行，Report Agent 读取不可变报告快照。工作流读取时会对齐 Business 任务状态。
 
 1.0.0 增加 research_sources 审核状态机。来源登记必须提供无凭证 HTTPS URL、发布方、发布日期与摘要，初始为 PENDING；ADMIN/MANAGER 核验后变为 VERIFIED。Research Agent 只读取当前租户、游戏/计划范围和 analysis_date 之前的 VERIFIED 来源，没有来源时返回 NO_VERIFIED_SOURCES，不生成市场事实。Business Prompt 1.1.0 明确研究来源只能解释背景，不能替代确定性指标证据。
+
+实时研究连接器通过 `internal/research/websearch.Provider` 隔离供应商实现，首个实现使用 Brave Search API。API Key 只从服务端环境变量读取；请求强制 HTTPS、超时、响应大小上限、安全搜索和供应商错误分类。搜索结果默认是短暂响应，不会自动写入数据库或进入 Business Agent；只有用户显式选择、供应商计划允许结果存储且 `GAI_WEB_SEARCH_IMPORT_ENABLED=true` 时，才登记为 PENDING 来源。`research_sources` 保存发现方式、Provider、查询 SHA-256 与发现时间，原始查询不持久化；仍需 ADMIN/MANAGER 人工核验后才成为分析证据。
+
+Agent 运行中心通过 workflow_steps 与 workflow_runs 的租户内联表聚合生成运行快照，区分服务健康、任务运行态和外部连接态。接口最多返回每个 Agent 三个活动任务与最近一次步骤，不改变持久化工作流状态；前端五秒刷新，并在当前工作流 SSE 更新时立即刷新快照。
 
 Data Agent 在重算前读取四类事实表和导入任务，输出行数、计划覆盖、最新日期、缺失/陈旧状态与失败导入数。它不会隐式触发外部同步；数据获取由显式导入、手工 MMP 同步或独立 Worker 定时任务负责，避免分析请求产生不可预期的外部副作用。
 
