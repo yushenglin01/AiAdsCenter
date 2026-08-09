@@ -2,15 +2,15 @@
 set -eu
 
 version=$(tr -d '[:space:]' < VERSION)
-test "$version" = "1.1.1"
+test "$version" = "1.3.0"
 grep -q "\"version\": \"${version}\"" web/package.json
 grep -q "version: ${version}" docs/contracts/api-contract.yaml
 
 test -f docs/iterations/README.md
 test -f docs/releases/CHANGELOG.md
 test -f "docs/releases/v${version}.md"
-grep -q 'DEV-20260808-001' docs/iterations/README.md
-grep -q 'DEV-20260808-001' "docs/releases/v${version}.md"
+grep -q 'DEV-20260809-002' docs/iterations/README.md
+grep -q 'DEV-20260809-002' "docs/releases/v${version}.md"
 
 for required in \
   docs/archive/api-contracts/MANIFEST.md \

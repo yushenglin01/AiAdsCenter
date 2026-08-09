@@ -25,12 +25,26 @@ func (h *Handler) ListConnections(c *gin.Context) {
 }
 
 func (h *Handler) ConfigureAppsFlyer(c *gin.Context) {
-	var req dto.ConfigureAppsFlyerRequest
+	var req dto.ConfigureConnectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Fail(c, apperror.Validation("game_id 和 external_app_id 不能为空"))
 		return
 	}
 	row, err := h.service.ConfigureAppsFlyer(c.Request.Context(), service.ConfigureInput{TenantID: identity.TenantID(c), UserID: identity.UserID(c), GameID: req.GameID, ExternalAppID: req.ExternalAppID, Status: req.Status, RequestID: contextValue(c, "request_id"), TraceID: contextValue(c, "trace_id"), IPAddress: c.ClientIP()})
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Created(c, row)
+}
+
+func (h *Handler) ConfigureAdjust(c *gin.Context) {
+	var req dto.ConfigureConnectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, apperror.Validation("game_id 和 external_app_id 不能为空"))
+		return
+	}
+	row, err := h.service.ConfigureAdjust(c.Request.Context(), service.ConfigureInput{TenantID: identity.TenantID(c), UserID: identity.UserID(c), GameID: req.GameID, ExternalAppID: req.ExternalAppID, Status: req.Status, RequestID: contextValue(c, "request_id"), TraceID: contextValue(c, "trace_id"), IPAddress: c.ClientIP()})
 	if err != nil {
 		response.Fail(c, err)
 		return

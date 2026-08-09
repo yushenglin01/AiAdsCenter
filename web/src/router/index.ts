@@ -9,6 +9,8 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
+    { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue') },
+    { path: '/verify-email', name: 'verify-email', component: () => import('@/views/VerifyEmailView.vue') },
     { path: '/', name: 'dashboard', component: () => import('@/views/DashboardView.vue'), meta: { requiresAuth: true } },
 	{ path: '/metrics', name: 'metrics', component: () => import('@/views/MetricsView.vue'), meta: { requiresAuth: true } },
 	{ path: '/attribution', name: 'attribution', component: () => import('@/views/AttributionView.vue'), meta: { requiresAuth: true } },
@@ -35,7 +37,7 @@ router.beforeEach(async (to) => {
     try { await auth.loadSession() } catch { auth.signOut() }
   }
   if (to.meta.requiresAuth && !auth.isAuthenticated) return { name: 'login', query: { redirect: to.fullPath } }
-  if (to.name === 'login' && auth.isAuthenticated) return { name: 'dashboard' }
+  if (['login', 'register'].includes(String(to.name)) && auth.isAuthenticated) return { name: 'dashboard' }
   if (to.meta.roles?.length && !auth.hasAnyRole(to.meta.roles)) return { name: 'forbidden' }
   return true
 })

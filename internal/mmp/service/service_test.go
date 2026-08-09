@@ -7,10 +7,11 @@ import (
 	"time"
 
 	auditdomain "github.com/example/adnova/internal/audit/domain"
+	auditservice "github.com/example/adnova/internal/audit/service"
 	ingestiondomain "github.com/example/adnova/internal/ingestion/domain"
 	ingestionservice "github.com/example/adnova/internal/ingestion/service"
-	"github.com/example/adnova/internal/mmp/appsflyer"
 	mmpdomain "github.com/example/adnova/internal/mmp/domain"
+	mmpprovider "github.com/example/adnova/internal/mmp/provider"
 	"github.com/example/adnova/internal/mmp/repository"
 	"github.com/example/adnova/pkg/provider"
 	"github.com/stretchr/testify/require"
@@ -31,6 +32,13 @@ func (r *memoryRepo) ListConnections(_ context.Context, tenant string) ([]mmpdom
 		if row.TenantID == tenant {
 			rows = append(rows, *row)
 		}
+	}
+	return rows, nil
+}
+func (r *memoryRepo) ListAllConnections(context.Context) ([]mmpdomain.Connection, error) {
+	rows := make([]mmpdomain.Connection, 0, len(r.connections))
+	for _, row := range r.connections {
+		rows = append(rows, *row)
 	}
 	return rows, nil
 }
@@ -99,15 +107,21 @@ func (r *memoryRepo) UpdateSyncRun(_ context.Context, row *mmpdomain.SyncRun) er
 
 type fakeFetcher struct {
 	configured bool
-	result     *appsflyer.FetchResult
+	result     *mmpprovider.FetchResult
 	err        error
 	calls      int
+	input      mmpprovider.FetchInput
 }
 
 func (f *fakeFetcher) Configured() bool { return f.configured }
-func (f *fakeFetcher) Fetch(context.Context, appsflyer.FetchInput) (*appsflyer.FetchResult, error) {
+func (f *fakeFetcher) Fetch(_ context.Context, input mmpprovider.FetchInput) (*mmpprovider.FetchResult, error) {
 	f.calls++
+	f.input = input
 	return f.result, f.err
+}
+
+func newService(repo Repository, fetcher mmpprovider.Fetcher, importer Importer, auditor auditservice.Recorder) *Service {
+	return New(repo, map[string]mmpprovider.Fetcher{mmpdomain.ProviderAppsFlyer: fetcher}, importer, auditor, map[string]int{mmpdomain.ProviderAppsFlyer: 7})
 }
 
 type fakeImporter struct {
@@ -132,7 +146,7 @@ func TestConfigureAppsFlyerReportsCredentialHealthWithoutExposingToken(t *testin
 	repo := newMemoryRepo()
 	fetcher := &fakeFetcher{configured: false}
 	auditor := &fakeAuditor{}
-	svc := New(repo, fetcher, &fakeImporter{}, auditor, 7)
+	svc := newService(repo, fetcher, &fakeImporter{}, auditor)
 	view, err := svc.ConfigureAppsFlyer(context.Background(), ConfigureInput{TenantID: "tenant", UserID: "user", GameID: "game", ExternalAppID: "com.example.game"})
 	require.NoError(t, err)
 	require.False(t, view.CredentialConfigured)
@@ -140,11 +154,22 @@ func TestConfigureAppsFlyerReportsCredentialHealthWithoutExposingToken(t *testin
 	require.Equal(t, []string{"MMP_CONNECTION_CONFIGURED"}, auditor.actions)
 }
 
+func TestConfigureAdjustUsesIndependentProviderConnection(t *testing.T) {
+	repo := newMemoryRepo()
+	adjustFetcher := &fakeFetcher{configured: true}
+	svc := New(repo, map[string]mmpprovider.Fetcher{mmpdomain.ProviderAdjust: adjustFetcher}, &fakeImporter{}, nil, map[string]int{mmpdomain.ProviderAdjust: 31})
+	view, err := svc.ConfigureAdjust(context.Background(), ConfigureInput{TenantID: "tenant", UserID: "user", GameID: "game", ExternalAppID: "adjust-app-token"})
+	require.NoError(t, err)
+	require.Equal(t, mmpdomain.ProviderAdjust, view.Provider)
+	require.Equal(t, "READY", view.Health)
+	require.True(t, view.CredentialConfigured)
+}
+
 func TestConfigureAppsFlyerRejectsAppIDChangeAfterSuccessfulSync(t *testing.T) {
 	repo := newMemoryRepo()
 	lastSync := time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC)
 	repo.connections["connection"] = &mmpdomain.Connection{ID: "connection", TenantID: "tenant", GameID: "game", Provider: mmpdomain.ProviderAppsFlyer, ExternalAppID: "old.app", Status: mmpdomain.ConnectionActive, LastSyncAt: &lastSync}
-	svc := New(repo, &fakeFetcher{configured: true}, &fakeImporter{}, nil, 7)
+	svc := newService(repo, &fakeFetcher{configured: true}, &fakeImporter{}, nil)
 	_, err := svc.ConfigureAppsFlyer(context.Background(), ConfigureInput{TenantID: "tenant", UserID: "user", GameID: "game", ExternalAppID: "new.app"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "不能直接更换")
@@ -153,10 +178,10 @@ func TestConfigureAppsFlyerRejectsAppIDChangeAfterSuccessfulSync(t *testing.T) {
 func TestSyncImportsDeterministicRecordsAndIsIdempotent(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.connections["connection"] = &mmpdomain.Connection{ID: "connection", TenantID: "tenant", GameID: "game", Provider: mmpdomain.ProviderAppsFlyer, ExternalAppID: "com.example.game", Status: mmpdomain.ConnectionActive}
-	fetcher := &fakeFetcher{configured: true, result: &appsflyer.FetchResult{Records: []provider.Record{{"date": "2026-08-01", "campaign_external_id": "cmp", "country": "US", "currency": "USD", "installs": "2", "activations": "2", "payers": "1", "revenue": "3.000000"}}, SourceRows: 3}}
+	fetcher := &fakeFetcher{configured: true, result: &mmpprovider.FetchResult{Records: []provider.Record{{"date": "2026-08-01", "campaign_external_id": "cmp", "country": "US", "currency": "USD", "installs": "2", "activations": "2", "payers": "1", "revenue": "3.000000"}}, SourceRows: 3}}
 	importer := &fakeImporter{}
 	auditor := &fakeAuditor{}
-	svc := New(repo, fetcher, importer, auditor, 7)
+	svc := newService(repo, fetcher, importer, auditor)
 	svc.now = func() time.Time { return time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC) }
 	input := SyncInput{TenantID: "tenant", UserID: "user", ConnectionID: "connection", From: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC), To: time.Date(2026, 8, 2, 0, 0, 0, 0, time.UTC)}
 	first, err := svc.Sync(context.Background(), input)
@@ -178,9 +203,9 @@ func TestSyncImportsDeterministicRecordsAndIsIdempotent(t *testing.T) {
 func TestSyncPersistsSafeProviderFailure(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.connections["connection"] = &mmpdomain.Connection{ID: "connection", TenantID: "tenant", GameID: "game", Provider: mmpdomain.ProviderAppsFlyer, ExternalAppID: "app", Status: mmpdomain.ConnectionActive}
-	fetcher := &fakeFetcher{configured: true, err: &appsflyer.ProviderError{Code: "UNAUTHORIZED", Message: "AppsFlyer Token 无效"}}
+	fetcher := &fakeFetcher{configured: true, err: &mmpprovider.Error{Code: "UNAUTHORIZED", Message: "AppsFlyer Token 无效"}}
 	auditor := &fakeAuditor{}
-	svc := New(repo, fetcher, &fakeImporter{}, auditor, 7)
+	svc := newService(repo, fetcher, &fakeImporter{}, auditor)
 	svc.now = func() time.Time { return time.Date(2026, 8, 4, 0, 0, 0, 0, time.UTC) }
 	_, err := svc.Sync(context.Background(), SyncInput{TenantID: "tenant", UserID: "user", ConnectionID: "connection", From: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC), To: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)})
 	require.Error(t, err)
@@ -190,4 +215,29 @@ func TestSyncPersistsSafeProviderFailure(t *testing.T) {
 	require.Equal(t, "UNAUTHORIZED", runs[0].ErrorCode)
 	require.Equal(t, []string{"MMP_SYNC_FAILED"}, auditor.actions)
 	require.False(t, errors.Is(err, repository.ErrNotFound))
+}
+
+func TestAutoSyncAllCoversTenantsAndHonorsProviderRanges(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.connections["af"] = &mmpdomain.Connection{ID: "af", TenantID: "tenant-a", GameID: "game-a", Provider: mmpdomain.ProviderAppsFlyer, ExternalAppID: "af-app", Status: mmpdomain.ConnectionActive}
+	repo.connections["adjust"] = &mmpdomain.Connection{ID: "adjust", TenantID: "tenant-b", GameID: "game-b", Provider: mmpdomain.ProviderAdjust, ExternalAppID: "adjust-app", Status: mmpdomain.ConnectionActive}
+	result := &mmpprovider.FetchResult{Records: []provider.Record{{"date": "2026-08-08", "campaign_external_id": "cmp", "country": "US", "currency": "USD", "installs": "1", "activations": "1", "payers": "0", "revenue": "0.000000"}}, SourceRows: 1}
+	afFetcher, adjustFetcher := &fakeFetcher{configured: true, result: result}, &fakeFetcher{configured: true, result: result}
+	svc := New(repo, map[string]mmpprovider.Fetcher{mmpdomain.ProviderAppsFlyer: afFetcher, mmpdomain.ProviderAdjust: adjustFetcher}, &fakeImporter{}, nil, map[string]int{mmpdomain.ProviderAppsFlyer: 7, mmpdomain.ProviderAdjust: 31})
+	svc.now = func() time.Time { return time.Date(2026, 8, 9, 8, 0, 0, 0, time.UTC) }
+
+	synced, err := svc.AutoSyncAll(context.Background(), 14)
+	require.NoError(t, err)
+	require.Equal(t, 2, synced)
+	require.Equal(t, "2026-08-02", afFetcher.input.From.Format("2006-01-02"))
+	require.Equal(t, "2026-07-26", adjustFetcher.input.From.Format("2006-01-02"))
+	require.Equal(t, "2026-08-08", afFetcher.input.To.Format("2006-01-02"))
+	require.NotNil(t, repo.connections["af"].LastSyncAt)
+	require.NotNil(t, repo.connections["adjust"].LastSyncAt)
+
+	synced, err = svc.AutoSyncAll(context.Background(), 14)
+	require.NoError(t, err)
+	require.Equal(t, 2, synced)
+	require.Equal(t, 1, afFetcher.calls)
+	require.Equal(t, 1, adjustFetcher.calls)
 }

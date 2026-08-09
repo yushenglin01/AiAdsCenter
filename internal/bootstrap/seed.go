@@ -30,11 +30,12 @@ func SeedDemo(db *gorm.DB) error {
 		{ID: "10000000-0000-4000-8000-000000000005", Code: "VIEWER", Name: "只读用户"},
 		{ID: "10000000-0000-4000-8000-000000000006", Code: "SYSTEM_AGENT", Name: "系统 Agent"},
 	}
+	seedApprovedAt := time.Now().UTC()
 	userRows := []model.User{
-		{ID: "20000000-0000-4000-8000-000000000001", TenantID: DemoTenantID, Username: "admin", DisplayName: "Demo Admin", PasswordHash: string(passwordHash), Status: "ACTIVE"},
-		{ID: "20000000-0000-4000-8000-000000000002", TenantID: DemoTenantID, Username: "manager", DisplayName: "Demo Manager", PasswordHash: string(passwordHash), Status: "ACTIVE"},
-		{ID: "20000000-0000-4000-8000-000000000003", TenantID: DemoTenantID, Username: "operator", DisplayName: "Demo Operator", PasswordHash: string(passwordHash), Status: "ACTIVE"},
-		{ID: "20000000-0000-4000-8000-000000000006", TenantID: DemoTenantID, Username: "system-agent", DisplayName: "System Agent", PasswordHash: string(passwordHash), Status: "SYSTEM"},
+		{ID: "20000000-0000-4000-8000-000000000001", TenantID: DemoTenantID, Username: "admin", Email: "admin@demo.local", DisplayName: "Demo Admin", Department: "平台管理", JobTitle: "系统管理员", PasswordHash: string(passwordHash), Status: "ACTIVE", EmailVerifiedAt: &seedApprovedAt, ApprovedAt: &seedApprovedAt},
+		{ID: "20000000-0000-4000-8000-000000000002", TenantID: DemoTenantID, Username: "manager", Email: "manager@demo.local", DisplayName: "Demo Manager", Department: "广告投放", JobTitle: "投放负责人", PasswordHash: string(passwordHash), Status: "ACTIVE", EmailVerifiedAt: &seedApprovedAt, ApprovedAt: &seedApprovedAt},
+		{ID: "20000000-0000-4000-8000-000000000003", TenantID: DemoTenantID, Username: "operator", Email: "operator@demo.local", DisplayName: "Demo Operator", Department: "广告投放", JobTitle: "投放优化师", PasswordHash: string(passwordHash), Status: "ACTIVE", EmailVerifiedAt: &seedApprovedAt, ApprovedAt: &seedApprovedAt},
+		{ID: "20000000-0000-4000-8000-000000000006", TenantID: DemoTenantID, Username: "system-agent", Email: "system-agent@demo.local", DisplayName: "System Agent", Department: "系统", JobTitle: "服务账号", PasswordHash: string(passwordHash), Status: "SYSTEM", EmailVerifiedAt: &seedApprovedAt},
 	}
 	links := []model.UserRole{
 		{TenantID: DemoTenantID, UserID: userRows[0].ID, RoleID: roleRows[0].ID},
@@ -64,20 +65,7 @@ func SeedDemo(db *gorm.DB) error {
 		{ID: "70000000-0000-4000-8000-000000000002", TenantID: DemoTenantID, GameID: gameRows[0].ID, MetricCode: "BENCHMARK_CPI", Value: decimal.RequireFromString("8.50"), PeriodStart: benchmarkStart, PeriodEnd: benchmarkEnd},
 		{ID: "70000000-0000-4000-8000-000000000003", TenantID: DemoTenantID, GameID: gameRows[0].ID, MetricCode: "BENCHMARK_PAYER_RATE", Value: decimal.RequireFromString("0.042"), PeriodStart: benchmarkStart, PeriodEnd: benchmarkEnd},
 	}
-	ruleRows := []rulesdomain.AnalysisRule{
-		{ID: "71000000-0000-4000-8000-000000000001", TenantID: DemoTenantID, Code: "ROAS_BELOW_TARGET", Category: "BUSINESS", Name: "D7 ROAS 低于目标", Severity: "HIGH", Threshold: decimal.RequireFromString("1.30"), ConsecutiveDays: 1, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000002", TenantID: DemoTenantID, Code: "D1_ROAS_DECLINE", Category: "BUSINESS", Name: "D1 ROAS 连续下降", Severity: "MEDIUM", Threshold: decimal.Zero, ConsecutiveDays: 3, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000003", TenantID: DemoTenantID, Code: "CPI_ABOVE_BENCHMARK", Category: "BUSINESS", Name: "CPI 高于基准", Severity: "MEDIUM", Threshold: decimal.RequireFromString("8.50"), ConsecutiveDays: 1, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000004", TenantID: DemoTenantID, Code: "PAYER_RATE_BELOW_BENCHMARK", Category: "BUSINESS", Name: "付费率低于基准", Severity: "HIGH", Threshold: decimal.RequireFromString("0.042"), ConsecutiveDays: 1, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000005", TenantID: DemoTenantID, Code: "BUDGET_OVER_90_ROAS_LOW", Category: "BUSINESS", Name: "预算高消耗低回收", Severity: "HIGH", Threshold: decimal.RequireFromString("0.90"), ConsecutiveDays: 1, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000006", TenantID: DemoTenantID, Code: "INSTALL_ATTRIBUTION_GAP", Category: "ATTRIBUTION", Name: "安装归因偏差", Severity: "HIGH", Threshold: decimal.RequireFromString("0.10"), ConsecutiveDays: 1, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000007", TenantID: DemoTenantID, Code: "REVENUE_ATTRIBUTION_GAP", Category: "ATTRIBUTION", Name: "收入归因偏差", Severity: "MEDIUM", Threshold: decimal.RequireFromString("0.10"), ConsecutiveDays: 1, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000008", TenantID: DemoTenantID, Code: "DATA_MISSING_OR_DELAY", Category: "ATTRIBUTION", Name: "数据缺失或延迟", Severity: "MEDIUM", Threshold: decimal.NewFromInt(1), ConsecutiveDays: 1, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000009", TenantID: DemoTenantID, Code: "CREATIVE_CTR_DECLINE", Category: "CREATIVE", Name: "素材 CTR 下降", Severity: "MEDIUM", Threshold: decimal.RequireFromString("0.20"), ConsecutiveDays: 7, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000010", TenantID: DemoTenantID, Code: "CREATIVE_FREQUENCY_HIGH", Category: "CREATIVE", Name: "素材频次过高", Severity: "HIGH", Threshold: decimal.RequireFromString("4.0"), ConsecutiveDays: 1, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000011", TenantID: DemoTenantID, Code: "CREATIVE_FATIGUE_HIGH", Category: "CREATIVE", Name: "素材疲劳风险高", Severity: "HIGH", Threshold: decimal.RequireFromString("0.80"), ConsecutiveDays: 1, Enabled: true},
-		{ID: "71000000-0000-4000-8000-000000000012", TenantID: DemoTenantID, Code: "HIGH_SPEND_LOW_CONVERSION", Category: "CREATIVE", Name: "高消耗低转化", Severity: "MEDIUM", Threshold: decimal.RequireFromString("8.50"), ConsecutiveDays: 1, Enabled: true},
-	}
+	ruleRows := standardAnalysisRules(DemoTenantID)
 	return db.Transaction(func(tx *gorm.DB) error {
 		for i := range tenantRows {
 			if err := tx.Where("id = ?", tenantRows[i].ID).FirstOrCreate(&tenantRows[i]).Error; err != nil {

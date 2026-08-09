@@ -141,7 +141,7 @@ function logout() {
       <div class="stage-note">
         <div><span class="live-dot"></span><strong>DATA PIPELINE</strong><small>ONLINE</small></div>
         <p>AppsFlyer 数据闭环</p>
-        <span>PHASE 11 · v1.1.1</span>
+        <span>PHASE 12 · v1.2.0</span>
       </div>
     </aside>
 

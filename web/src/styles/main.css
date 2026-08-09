@@ -258,6 +258,72 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .login-panel .el-input__wrapper.is-focus { border-color: var(--orbit); box-shadow: 0 0 0 4px rgba(98, 85, 246, 0.1); }
 .login-panel .el-input__prefix { color: #8e96ad; }
 .submit-button.el-button { width: 100%; height: 52px; margin-top: 4px; display: flex; justify-content: space-between; border: 0; border-radius: 10px; background: linear-gradient(110deg, var(--orbit-dark), #6f63fb 65%, #7669ff); box-shadow: 0 12px 24px rgba(79, 64, 225, 0.24); font-weight: 700; letter-spacing: 0.03em; }
+
+.auth-switch { margin-top: 22px; color: var(--ink-500); font-size: 13px; text-align: center; }
+.auth-switch a { color: var(--orbit-dark); font-weight: 700; text-decoration: none; }
+.auth-switch a:hover { text-decoration: underline; }
+
+.member-auth-page { min-height: 100vh; display: grid; grid-template-columns: minmax(340px, 0.85fr) minmax(620px, 1.15fr); background: var(--ink-950); }
+.member-auth-brand { position: relative; min-height: 100vh; padding: clamp(36px, 5vw, 72px); display: flex; flex-direction: column; overflow: hidden; color: white; background: radial-gradient(circle at 82% 18%, rgba(98, 85, 246, 0.36), transparent 36%), linear-gradient(145deg, #111a34, #080d1c 72%); }
+.member-auth-brand::after { position: absolute; right: -22%; bottom: -8%; width: 520px; height: 520px; content: ""; border: 1px solid rgba(114, 230, 242, 0.18); border-radius: 50%; box-shadow: 0 0 0 70px rgba(114, 230, 242, 0.025), 0 0 0 140px rgba(98, 85, 246, 0.025); }
+.member-auth-copy { position: relative; z-index: 1; margin: auto 0; max-width: 520px; }
+.member-auth-copy h1 { margin: 20px 0; font-size: clamp(42px, 5vw, 68px); line-height: 1.04; letter-spacing: -0.055em; }
+.member-auth-copy h1 em { color: var(--aurora); font-style: normal; }
+.member-auth-copy > p { max-width: 480px; color: #9ba7c6; font-size: 15px; line-height: 1.8; }
+.member-auth-copy ol { margin: 42px 0 0; padding: 0; display: grid; gap: 14px; list-style: none; }
+.member-auth-copy li { padding: 14px 0; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid rgba(147, 161, 198, 0.15); }
+.member-auth-copy li strong { color: var(--aurora); font: 700 12px monospace; letter-spacing: 0.12em; }
+.member-auth-copy li span { color: #d5daea; font-size: 14px; }
+.member-auth-access { min-height: 100vh; padding: clamp(26px, 4vw, 64px); display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f1f3f9; }
+.member-register-panel { width: min(100%, 760px); padding: clamp(28px, 4vw, 48px); background: white; box-shadow: 0 26px 80px rgba(24, 32, 64, 0.12); }
+.member-register-panel .el-alert, .login-panel .el-alert { margin-bottom: 20px; }
+.member-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+.member-register-panel .el-input__wrapper { min-height: 46px; }
+.password-checks { margin: -4px 0 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+.password-checks span { padding: 5px 9px; border-radius: 999px; color: #7e879e; background: #f0f2f7; font-size: 11px; }
+.password-checks span::before { margin-right: 5px; content: "○"; }
+.password-checks span.passed { color: #17765d; background: #e8f7f1; }
+.password-checks span.passed::before { content: "✓"; }
+
+.verification-page { min-height: 100vh; padding: 32px; display: grid; place-items: center; background: radial-gradient(circle at 20% 15%, rgba(98, 85, 246, 0.24), transparent 30%), linear-gradient(145deg, #111a34, #080d1c); }
+.verification-card { width: min(100%, 580px); padding: clamp(28px, 5vw, 54px); background: white; box-shadow: 0 32px 90px rgba(0, 0, 0, 0.3); text-align: center; }
+.verification-brand { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.verification-brand .brand-glyph { width: 38px; }
+.verification-brand div { display: grid; text-align: left; }
+.verification-brand strong { color: var(--ink-900); font-size: 20px; }
+.verification-brand span { color: var(--ink-500); font-size: 11px; letter-spacing: 0.12em; }
+.verification-state { padding: 60px 0 30px; }
+.verification-state h1 { margin: 22px 0 8px; color: var(--ink-900); }
+.verification-state p { color: var(--ink-500); }
+.verification-spinner { width: 42px; height: 42px; display: inline-block; border: 3px solid #e0e3ee; border-top-color: var(--orbit); border-radius: 50%; animation: orbit-spin 0.9s linear infinite; }
+.verification-link { display: inline-flex; padding: 11px 18px; border-radius: 9px; color: white; background: var(--orbit-dark); font-weight: 700; text-decoration: none; }
+.resend-panel { margin: -12px auto 24px; max-width: 430px; padding: 20px; background: #f5f6fa; text-align: left; }
+.resend-panel label { margin-bottom: 8px; display: block; color: var(--ink-700); font-size: 12px; font-weight: 700; }
+.resend-panel > div { display: flex; gap: 8px; }
+.resend-panel p { margin: 10px 0 0; color: var(--ink-500); font-size: 12px; }
+
+.member-admin-actions { display: flex; align-items: center; gap: 12px; }
+.member-filter { margin-bottom: 18px; padding: 16px 18px; display: flex; justify-content: flex-end; border: 1px solid var(--line-soft); background: white; }
+.member-filter label { width: 220px; display: grid; gap: 7px; color: var(--ink-600); font-size: 12px; font-weight: 700; }
+.member-approval-summary { margin-bottom: 22px; padding: 16px; display: grid; gap: 5px; border-left: 3px solid var(--orbit); background: #f5f6fa; }
+.member-approval-summary span, .member-approval-summary small { color: var(--ink-500); }
+
+@media (max-width: 980px) {
+  .member-auth-page { grid-template-columns: 1fr; }
+  .member-auth-brand { min-height: auto; padding-bottom: 54px; }
+  .member-auth-copy { margin-top: 70px; }
+  .member-auth-copy h1 { font-size: 48px; }
+  .member-auth-access { min-height: auto; }
+}
+
+@media (max-width: 620px) {
+  .member-form-grid { grid-template-columns: 1fr; }
+  .member-form-grid > span { display: none; }
+  .member-auth-copy h1 { font-size: 38px; }
+  .member-auth-access { padding: 0; }
+  .member-register-panel { box-shadow: none; }
+  .resend-panel > div { flex-direction: column; }
+}
 .submit-button.el-button:hover { transform: translateY(-1px); background: linear-gradient(110deg, #4032d8, #6255f6); box-shadow: 0 16px 30px rgba(79, 64, 225, 0.3); }
 .submit-button span span { margin-left: auto; font-size: 17px; }
 .demo-hint { margin: 22px 0 0; display: flex; align-items: center; gap: 7px; color: var(--ink-400); font-size: 10px; }

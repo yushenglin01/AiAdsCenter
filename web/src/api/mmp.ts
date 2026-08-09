@@ -2,15 +2,16 @@ import { apiClient } from './client'
 import type { ApiEnvelope } from '@/types/api'
 import type { MMPConnection, MMPSyncRun } from '@/types/catalog'
 
-export interface ConfigureAppsFlyerPayload { game_id: string; external_app_id: string; status: 'ACTIVE' | 'DISABLED' }
+export type MMPProvider = 'APPSFLYER' | 'ADJUST'
+export interface ConfigureMMPPayload { game_id: string; external_app_id: string; status: 'ACTIVE' | 'DISABLED' }
 
 export async function listMMPConnections(): Promise<MMPConnection[]> {
   const { data } = await apiClient.get<ApiEnvelope<MMPConnection[]>>('/mmp-connections')
   return data.data
 }
 
-export async function configureAppsFlyer(payload: ConfigureAppsFlyerPayload): Promise<MMPConnection> {
-  const { data } = await apiClient.put<ApiEnvelope<MMPConnection>>('/mmp-connections/appsflyer', payload)
+export async function configureMMPConnection(provider: MMPProvider, payload: ConfigureMMPPayload): Promise<MMPConnection> {
+	const { data } = await apiClient.put<ApiEnvelope<MMPConnection>>(`/mmp-connections/${provider.toLowerCase()}`, payload)
   return data.data
 }
 
