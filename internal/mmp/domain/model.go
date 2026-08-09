@@ -46,6 +46,8 @@ type SyncRun struct {
 	ErrorMessage   string     `gorm:"type:text" json:"error_message,omitempty"`
 	RequestedBy    string     `gorm:"type:char(36);not null" json:"requested_by"`
 	StartedAt      time.Time  `json:"started_at"`
+	LockedUntil    *time.Time `json:"-"`
+	ClaimToken     string     `gorm:"type:char(36)" json:"-"`
 	FinishedAt     *time.Time `json:"finished_at,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
