@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 import type { ApiEnvelope } from '@/types/api'
-import type { ResearchSource, ResearchSourceInput } from '@/types/research'
+import type { ResearchSource, ResearchSourceInput, WebImportInput, WebSearchCapability, WebSearchInput, WebSearchResponse } from '@/types/research'
 
 export const researchApi = {
   list: async () => {
@@ -17,6 +17,18 @@ export const researchApi = {
   },
   reject: async (id: string, comment: string) => {
     const { data } = await apiClient.post<ApiEnvelope<ResearchSource>>(`/research/sources/${id}/reject`, { comment })
+    return data.data
+  },
+  webCapability: async () => {
+    const { data } = await apiClient.get<ApiEnvelope<WebSearchCapability>>('/research/web-search/capability')
+    return data.data
+  },
+  searchWeb: async (payload: WebSearchInput) => {
+    const { data } = await apiClient.post<ApiEnvelope<WebSearchResponse>>('/research/web-search', payload, { timeout: 15_000 })
+    return data.data
+  },
+  importWebResult: async (payload: WebImportInput) => {
+    const { data } = await apiClient.post<ApiEnvelope<ResearchSource>>('/research/web-search/import', payload)
     return data.data
   },
 }

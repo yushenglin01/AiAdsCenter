@@ -40,9 +40,9 @@ func NewAgentRegistry(metrics *metricsservice.Service, rules *rulesservice.Servi
 			Executor:     agents.NewBusinessExecutor(business),
 		},
 		{
-			Spec:         agentdomain.AgentSpec{Name: "research-agent", Version: "1.1.0", Description: "读取经人工核验的政策、竞品和市场信息并强制保留来源", ExecutionMode: "VERIFIED_RESEARCH", Tools: []string{"list_verified_sources", "source_contract", "preserve_provenance"}, Permissions: []string{"READ_VERIFIED_PUBLIC_SOURCES"}, MaxSteps: 6, Timeout: 2 * time.Minute, InputSchema: "full-analysis-input/1.0.0", OutputSchema: "research-agent-output/1.1.0"},
+			Spec:         agentdomain.AgentSpec{Name: "research-agent", Version: "1.2.0", Description: "联网检索政策、竞品和市场信息；结果经人工核验后进入分析", ExecutionMode: "VERIFIED_RESEARCH", Tools: []string{"search_public_web", "import_web_result_for_review", "list_verified_sources", "source_contract", "preserve_provenance"}, Permissions: []string{"SEARCH_PUBLIC_WEB", "REGISTER_RESEARCH_SOURCE", "READ_VERIFIED_PUBLIC_SOURCES"}, MaxSteps: 8, Timeout: 2 * time.Minute, InputSchema: "full-analysis-input/1.0.0", OutputSchema: "research-agent-output/1.2.0"},
 			Availability: agentruntime.AvailabilityReady,
-			Details:      []string{"manual_source_registration", "human_verification_required", "fabrication_disabled", "live_web_connector_not_configured"},
+			Details:      []string{"manual_source_registration", "human_verification_required", "fabrication_disabled", "live_web_search_optional"},
 			Executor:     agents.NewResearchExecutor(research),
 		},
 		{

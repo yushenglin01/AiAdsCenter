@@ -2,7 +2,9 @@ package service
 
 import (
 	"testing"
+	"time"
 
+	"github.com/example/adnova/internal/workflow/domain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,6 +17,21 @@ func TestNewStepsDefinesSevenAgentWorkflow(t *testing.T) {
 	}
 	require.Equal(t, []string{"openclaw-agent", "data-agent", "attribution-agent", "creative-agent", "research-agent", "business-agent", "report-agent"}, names)
 	require.Equal(t, "ASYNCHRONOUS_LLM", steps[5].ExecutionMode)
+}
+
+func TestSummarizeAgentRuntimeSeparatesQueuedRunningAndLastTask(t *testing.T) {
+	now := time.Now().UTC()
+	rows := []domain.AgentTaskSnapshot{
+		{AgentName: "business-agent", WorkflowID: "workflow-running", WorkflowStatus: "WAITING_AGENT", CampaignName: "Google JP", Status: "RUNNING", UpdatedAt: now},
+		{AgentName: "business-agent", WorkflowID: "workflow-old", WorkflowStatus: "COMPLETED", CampaignName: "Meta US", Status: "SUCCEEDED", UpdatedAt: now.Add(-time.Hour)},
+		{AgentName: "report-agent", WorkflowID: "workflow-running", WorkflowStatus: "WAITING_AGENT", CampaignName: "Google JP", Status: "PENDING", UpdatedAt: now},
+	}
+	runtimes := summarizeAgentRuntime(rows)
+	require.Len(t, runtimes, 7)
+	require.Equal(t, "RUNNING", runtimes[5].RuntimeStatus)
+	require.Len(t, runtimes[5].ActiveTasks, 1)
+	require.Equal(t, "QUEUED", runtimes[6].RuntimeStatus)
+	require.Equal(t, "workflow-running", runtimes[5].LastTask.WorkflowID)
 }
 
 func TestWorkflowTerminalStates(t *testing.T) {

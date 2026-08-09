@@ -6,18 +6,33 @@ import (
 	agentdomain "github.com/example/adnova/internal/agent/domain"
 	agentruntime "github.com/example/adnova/internal/agent/runtime"
 	"github.com/example/adnova/internal/common/apperror"
+	"github.com/example/adnova/internal/common/identity"
 	"github.com/example/adnova/internal/common/response"
+	workflowdomain "github.com/example/adnova/internal/workflow/domain"
 	"github.com/gin-gonic/gin"
 )
 
-type Handler struct{ registry *agentruntime.Registry }
+type RuntimeReader interface {
+	AgentRuntime(context.Context, string) ([]workflowdomain.AgentRuntime, error)
+}
+
+type Handler struct {
+	registry *agentruntime.Registry
+	runtime  RuntimeReader
+}
 
 type CatalogItem struct {
 	Definition agentruntime.Definition   `json:"definition"`
 	Health     *agentdomain.HealthStatus `json:"health,omitempty"`
 }
 
-func New(registry *agentruntime.Registry) *Handler { return &Handler{registry: registry} }
+func New(registry *agentruntime.Registry, readers ...RuntimeReader) *Handler {
+	handler := &Handler{registry: registry}
+	if len(readers) > 0 {
+		handler.runtime = readers[0]
+	}
+	return handler
+}
 
 func (h *Handler) List(c *gin.Context) {
 	definitions := h.registry.List()
@@ -35,6 +50,19 @@ func (h *Handler) Get(c *gin.Context) {
 		return
 	}
 	response.OK(c, CatalogItem{Definition: definition, Health: health(c, definition)})
+}
+
+func (h *Handler) Runtime(c *gin.Context) {
+	if h.runtime == nil {
+		response.OK(c, []workflowdomain.AgentRuntime{})
+		return
+	}
+	rows, err := h.runtime.AgentRuntime(c, identity.TenantID(c))
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, rows)
 }
 
 func health(ctx context.Context, definition agentruntime.Definition) *agentdomain.HealthStatus {
