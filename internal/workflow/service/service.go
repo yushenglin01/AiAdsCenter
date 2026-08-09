@@ -209,6 +209,56 @@ func (s *Service) List(ctx context.Context, tenantID string) ([]domain.Run, erro
 	return s.repo.List(ctx, tenantID, 50)
 }
 
+func (s *Service) AgentRuntime(ctx context.Context, tenantID string) ([]domain.AgentRuntime, error) {
+	rows, err := s.repo.ListAgentSteps(ctx, tenantID, 300)
+	if err != nil {
+		return nil, err
+	}
+	return summarizeAgentRuntime(rows), nil
+}
+
+func summarizeAgentRuntime(rows []domain.AgentTaskSnapshot) []domain.AgentRuntime {
+	order := []string{"openclaw-agent", "data-agent", "attribution-agent", "creative-agent", "research-agent", "business-agent", "report-agent"}
+	grouped := make(map[string]*domain.AgentRuntime, len(order))
+	for _, name := range order {
+		grouped[name] = &domain.AgentRuntime{AgentName: name, RuntimeStatus: "IDLE", ActiveTasks: []domain.AgentTaskSnapshot{}}
+	}
+	for index := range rows {
+		row := rows[index]
+		runtime, exists := grouped[row.AgentName]
+		if !exists {
+			runtime = &domain.AgentRuntime{AgentName: row.AgentName, RuntimeStatus: "IDLE", ActiveTasks: []domain.AgentTaskSnapshot{}}
+			grouped[row.AgentName] = runtime
+			order = append(order, row.AgentName)
+		}
+		if runtime.LastTask == nil {
+			copy := row
+			runtime.LastTask = &copy
+			if row.Status == "FAILED" || row.Status == "MANUAL_REVIEW" {
+				runtime.RuntimeStatus = "FAILED"
+			}
+		}
+		if len(runtime.ActiveTasks) >= 3 || workflowTerminal(row.WorkflowStatus) || stepTerminal(row.Status) {
+			continue
+		}
+		runtime.ActiveTasks = append(runtime.ActiveTasks, row)
+		if row.Status == "RUNNING" || row.Status == "RETRYING" || row.Status == "QUEUED" {
+			runtime.RuntimeStatus = "RUNNING"
+		} else if runtime.RuntimeStatus != "RUNNING" {
+			runtime.RuntimeStatus = "QUEUED"
+		}
+	}
+	result := make([]domain.AgentRuntime, 0, len(order))
+	for _, name := range order {
+		result = append(result, *grouped[name])
+	}
+	return result
+}
+
+func stepTerminal(status string) bool {
+	return status == "SUCCEEDED" || status == "SKIPPED" || status == "FAILED" || status == "MANUAL_REVIEW" || status == "CANCELLED" || status == "WAITING_APPROVAL"
+}
+
 func newSteps(workflowID, tenantID string) []domain.Step {
 	definitions := []struct{ name, mode string }{
 		{"openclaw-agent", "INTERACTION_GATEWAY"},

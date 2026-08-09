@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 import type { ApiEnvelope } from '@/types/api'
-import type { AgentCatalogItem, OpenClawResult, WorkflowDetails, WorkflowNotification, WorkflowRun, WorkflowStartInput } from '@/types/workflow'
+import type { AgentCatalogItem, AgentRuntime, OpenClawResult, WorkflowDetails, WorkflowNotification, WorkflowRun, WorkflowStartInput } from '@/types/workflow'
 import { parseWorkflowEventFrame } from '@/utils/workflow'
 
 const terminal = (status: string) => ['WAITING_APPROVAL', 'COMPLETED', 'FAILED', 'MANUAL_REVIEW', 'CANCELLED'].includes(status)
@@ -8,6 +8,10 @@ const terminal = (status: string) => ['WAITING_APPROVAL', 'COMPLETED', 'FAILED',
 export const workflowApi = {
   listAgents: async () => {
     const { data } = await apiClient.get<ApiEnvelope<AgentCatalogItem[]>>('/agents')
+    return data.data
+  },
+  listAgentRuntime: async () => {
+    const { data } = await apiClient.get<ApiEnvelope<AgentRuntime[]>>('/agents/runtime')
     return data.data
   },
   list: async () => {

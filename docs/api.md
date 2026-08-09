@@ -133,6 +133,9 @@ Token 响应的 `data`：
 | POST | `/api/v1/research/sources` | ADMIN/MANAGER/ANALYST | 登记无凭证 HTTPS 研究来源，初始状态 PENDING |
 | POST | `/api/v1/research/sources/:id/verify` | ADMIN/MANAGER | 核验来源，使其可进入 Research/Business Agent |
 | POST | `/api/v1/research/sources/:id/reject` | ADMIN/MANAGER | 驳回来源，必须填写原因 |
+| GET | `/api/v1/research/web-search/capability` | 登录用户 | 实时联网 Provider、配置状态、最大结果数与入库开关；不返回 API Key |
+| POST | `/api/v1/research/web-search` | ADMIN/MANAGER/ANALYST | 实时检索公开网页；结果默认不持久化，不直接进入 Agent 分析 |
+| POST | `/api/v1/research/web-search/import` | ADMIN/MANAGER/ANALYST | 将选中的联网结果登记为 PENDING 来源，要求启用结果存储 |
 | POST | `/api/v1/analysis/business` | ADMIN/MANAGER/OPERATOR/ANALYST | HTTP 202 接收幂等经营分析任务 |
 | GET | `/api/v1/analysis/business/tasks` | 登录用户 | 最近经营分析任务 |
 | GET | `/api/v1/analysis/business/tasks/:id` | 登录用户 | 任务、尝试、用量、发现、建议、审批和报告详情 |
@@ -140,6 +143,7 @@ Token 响应的 `data`：
 | GET | `/api/v1/analysis/business/tasks/:id/report` | 登录用户 | 成功任务的 Markdown 报告快照 |
 | GET | `/api/v1/analysis/business/health` | 登录用户 | Agent Provider 健康状态与工具能力 |
 | GET | `/api/v1/agents`、`/agents/:name` | 登录用户 | 七类 Agent 目录、执行模式、能力和健康状态 |
+| GET | `/api/v1/agents/runtime` | 登录用户 | 每个 Agent 的运行态、活动工作流任务与最近任务快照 |
 | POST | `/api/v1/workflows/analysis` | ADMIN/MANAGER/OPERATOR/ANALYST | 启动完整多 Agent 分析工作流 |
 | GET | `/api/v1/workflows`、`/workflows/:id` | 登录用户 | 工作流与每个 Agent 步骤状态 |
 | GET | `/api/v1/workflows/:id/events` | 登录用户 | 工作流 SSE；状态变化时推送，25 秒要求重连 |
@@ -163,6 +167,22 @@ Token 响应的 `data`：
   "analysis_date": "2026-07-30"
 }
 ```
+
+实时联网研究请求：
+
+```json
+{
+  "query": "日本手游广告市场最新政策与平台变化",
+  "game_id": "30000000-0000-4000-8000-000000000001",
+  "campaign_id": "50000000-0000-4000-8000-000000000001",
+  "category": "POLICY",
+  "count": 6,
+  "country": "JP",
+  "freshness": "pw"
+}
+```
+
+`freshness` 可省略，或使用 `pd`、`pw`、`pm`、`py`。查询最长 400 字符/50 个词，结果数不能超过 `GAI_WEB_SEARCH_MAX_RESULTS`。搜索 API Key 只保存在服务端；Brave Search 使用 `X-Subscription-Token` 调用官方 HTTPS endpoint。搜索成功会记录查询 SHA-256、Provider、结果数和作用域审计，不记录原始查询。若要把结果保存为来源，必须先确认供应商计划包含存储权并设置 `GAI_WEB_SEARCH_IMPORT_ENABLED=true`；入库后状态仍为 PENDING。
 
 OpenClaw 命令请求：
 

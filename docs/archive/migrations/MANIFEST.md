@@ -4,7 +4,7 @@
 * 归档日期：2026-08-09
 * 来源文件：仓库根目录 `migrations/`
 * 对应迭代：DEV-20260804-001 至 DEV-20260809-002
-* 主要变更：依次建立认证、目录与导入、指标、Agent、契约追踪、异步 Outbox、审批治理、工作流消息、AppsFlyer 同步、核验研究来源、Kafka 标准数据接入、分析窗口租约恢复与企业成员注册授权。
+* 主要变更：依次建立认证、目录与导入、指标、Agent、契约追踪、异步 Outbox、审批治理、工作流消息、AppsFlyer 同步、核验研究来源、Kafka 标准数据接入、分析窗口租约恢复、企业成员注册授权与联网研究来源溯源字段。
 * 是否兼容旧版本：up migration 均为前向新增；000007 为审批字段和审计表新增，并回填旧审批。
 * 说明：SQL 原文件是权威、不可覆盖的历史；本清单保存校验值，不复制出第二套可执行文件。
 
@@ -25,3 +25,4 @@
 | 000012_standard_ingestion_kafka | `6bf1df33b1a21fff6c4a12b1ebde543fdf0d62d0c17d4ab8664cdf94b3c9dde6` | `22c070d71c24abb9be076de6312c0aa5961677299bd62e25f09905e63468d4c2` |
 | 000013_analysis_window_leases | `ae21189cb6816a6ebda0ecfafb85ddb70823e29265778d1186243046d8488a18` | `909e9ef7df61efd96f6a987a9d347403673829f74ac2be66ff8820f373a92b2c` |
 | 000014_member_registration | `00af804d3a8e22b99383b51220ac4457d0ac864d731d188200667bde69ba60c1` | `36ea58d74a3f35ba9412cf9ff1373c7dfbeca0bc1ea3ce4df9c0fb9c0d530da6` |
+| 000016_research_web_discovery | `4f68153977117d6043b7e39c28bb0547942a5d3b7593b3ae3146489f5890517b` | `740c82a509332d756b22daad881035c1aa6f3c4e2a2746231c37a1ca200de742` |

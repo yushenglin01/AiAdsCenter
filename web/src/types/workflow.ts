@@ -29,6 +29,27 @@ export interface AgentCatalogItem {
   health?: AgentHealth
 }
 
+export interface AgentTaskSnapshot {
+  agent_name: string
+  workflow_id: string
+  workflow_status: string
+  campaign_id: string
+  campaign_name: string
+  trace_id?: string
+  status: string
+  execution_mode: string
+  started_at?: string
+  finished_at?: string
+  updated_at: string
+}
+
+export interface AgentRuntime {
+  agent_name: string
+  runtime_status: 'IDLE' | 'QUEUED' | 'RUNNING' | 'FAILED'
+  active_tasks: AgentTaskSnapshot[]
+  last_task?: AgentTaskSnapshot
+}
+
 export interface WorkflowRun {
   workflow_id: string
   workflow_type: string

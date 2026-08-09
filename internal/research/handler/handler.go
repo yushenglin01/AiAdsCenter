@@ -39,6 +39,38 @@ func (h *Handler) List(c *gin.Context) {
 	response.OK(c, rows)
 }
 
+func (h *Handler) WebCapability(c *gin.Context) {
+	response.OK(c, h.service.WebCapability())
+}
+
+func (h *Handler) SearchWeb(c *gin.Context) {
+	var input researchservice.WebSearchInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.Fail(c, apperror.Validation("请求参数格式错误"))
+		return
+	}
+	result, err := h.service.SearchWeb(c, actor(c), input)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, result)
+}
+
+func (h *Handler) ImportWebResult(c *gin.Context) {
+	var input researchservice.WebImportInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.Fail(c, apperror.Validation("请求参数格式错误"))
+		return
+	}
+	result, err := h.service.ImportWebResult(c, actor(c), input)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Created(c, result)
+}
+
 func (h *Handler) Verify(c *gin.Context) { h.decide(c, researchdomain.StatusVerified) }
 func (h *Handler) Reject(c *gin.Context) { h.decide(c, researchdomain.StatusRejected) }
 
