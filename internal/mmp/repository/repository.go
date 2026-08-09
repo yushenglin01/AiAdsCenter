@@ -28,6 +28,12 @@ func (r *Repository) ListConnections(ctx context.Context, tenantID string) ([]do
 	return rows, err
 }
 
+func (r *Repository) ListAllConnections(ctx context.Context) ([]domain.Connection, error) {
+	var rows []domain.Connection
+	err := r.db.WithContext(ctx).Order("tenant_id ASC, updated_at DESC").Find(&rows).Error
+	return rows, err
+}
+
 func (r *Repository) GetConnection(ctx context.Context, tenantID, id string) (*domain.Connection, error) {
 	var row domain.Connection
 	err := r.db.WithContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).First(&row).Error

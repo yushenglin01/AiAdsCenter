@@ -17,6 +17,7 @@ import (
 	audithandler "github.com/example/adnova/internal/audit/handler"
 	auditrepo "github.com/example/adnova/internal/audit/repository"
 	auditservice "github.com/example/adnova/internal/audit/service"
+	authemail "github.com/example/adnova/internal/auth/email"
 	authhandler "github.com/example/adnova/internal/auth/handler"
 	authrepo "github.com/example/adnova/internal/auth/repository"
 	authservice "github.com/example/adnova/internal/auth/service"
@@ -47,10 +48,7 @@ import (
 	metricsrepo "github.com/example/adnova/internal/metrics/repository"
 	metricsservice "github.com/example/adnova/internal/metrics/service"
 	appmiddleware "github.com/example/adnova/internal/middleware"
-	mmpappsflyer "github.com/example/adnova/internal/mmp/appsflyer"
 	mmphandler "github.com/example/adnova/internal/mmp/handler"
-	mmprepo "github.com/example/adnova/internal/mmp/repository"
-	mmpservice "github.com/example/adnova/internal/mmp/service"
 	modelusagehandler "github.com/example/adnova/internal/modelusage/handler"
 	modelusagerepo "github.com/example/adnova/internal/modelusage/repository"
 	modelusageservice "github.com/example/adnova/internal/modelusage/service"
@@ -91,7 +89,12 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	router.GET("/health", healthHandler(sqlDB, redisClient))
 
 	userRepo := authrepo.New(db)
-	authService := authservice.New(userRepo, cfg.JWT, cfg.Tenant.DefaultID)
+	auditService := auditservice.New(auditrepo.New(db))
+	var registrationSender authemail.Sender = authemail.NewLogSender(logger)
+	if cfg.Registration.Mail.Provider == "smtp" {
+		registrationSender = authemail.NewSMTPSender(cfg.Registration.Mail)
+	}
+	authService := authservice.New(userRepo, cfg.JWT, cfg.Tenant.DefaultID, authservice.WithRegistration(userRepo, registrationSender, cfg.Registration, auditService))
 	authHandler := authhandler.New(authService)
 	tenantHandler := tenanthandler.New(tenantservice.New(tenantrepo.New(db)))
 	gameHandler := gamehandler.New(gameservice.New(gamerepo.New(db)))
@@ -107,7 +110,6 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	attributionService := attributionservice.New(attributionRepository)
 	creativeAnalysisService := creativeanalysisservice.New(creativeAnalysisRepository)
 	dataQualityService := dataqualityservice.New(dataqualityrepo.New(db))
-	auditService := auditservice.New(auditrepo.New(db))
 	researchService := researchservice.New(researchrepo.New(db), auditService)
 	researchHandler := researchhandler.New(researchService)
 	pipeline := analysisservice.NewPipeline(metricsService, rulesService, attributionService, creativeAnalysisService)
@@ -131,8 +133,7 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	approvalHandler := approvalhandler.New(approvalService)
 	workflowService := workflowservice.New(workflowrepo.New(db), agentRegistry, businessService, notificationService)
 	workflowHandler := workflowhandler.New(workflowService, openclawservice.New(workflowService, approvalService, notificationService))
-	appsFlyerClient := mmpappsflyer.New(mmpappsflyer.Config{BaseURL: cfg.AppsFlyer.BaseURL, Token: cfg.AppsFlyer.APIToken, Timeout: cfg.AppsFlyer.Timeout, MaxRetries: cfg.AppsFlyer.MaxRetries, PurchaseEvents: cfg.AppsFlyer.PurchaseEvents})
-	mmpHandler := mmphandler.New(mmpservice.New(mmprepo.New(db), appsFlyerClient, ingestionService, auditService, cfg.AppsFlyer.MaxRangeDays))
+	mmpHandler := mmphandler.New(NewMMPService(cfg, db))
 	auditHandler := audithandler.New(auditService)
 	recommendationHandler := recommendationhandler.New(recommendationservice.New(recommendationrepo.New(db)))
 	modelUsageHandler := modelusagehandler.New(modelusageservice.New(modelusagerepo.New(db)))
@@ -140,6 +141,10 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 
 	v1 := router.Group("/api/v1")
 	authRoutes := v1.Group("/auth")
+	authRoutes.GET("/registration-config", authHandler.RegistrationConfig)
+	authRoutes.POST("/register", authHandler.Register)
+	authRoutes.POST("/verify-email", authHandler.VerifyEmail)
+	authRoutes.POST("/resend-verification", authHandler.ResendVerification)
 	authRoutes.POST("/login", authHandler.Login)
 	authRoutes.POST("/refresh", authHandler.Refresh)
 	authenticated := v1.Group("")
@@ -171,6 +176,7 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	authenticated.POST("/imports/batches", appmiddleware.RequireRoles("ADMIN", "MANAGER", "OPERATOR"), ingestionHandler.ImportBatch)
 	authenticated.GET("/mmp-connections", mmpHandler.ListConnections)
 	authenticated.PUT("/mmp-connections/appsflyer", appmiddleware.RequireRoles("ADMIN", "MANAGER"), mmpHandler.ConfigureAppsFlyer)
+	authenticated.PUT("/mmp-connections/adjust", appmiddleware.RequireRoles("ADMIN", "MANAGER"), mmpHandler.ConfigureAdjust)
 	authenticated.GET("/mmp-sync-runs", mmpHandler.ListSyncRuns)
 	authenticated.POST("/mmp-connections/:id/sync", appmiddleware.RequireRoles("ADMIN", "MANAGER", "OPERATOR"), mmpHandler.Sync)
 	authenticated.GET("/metrics/overview", metricsHandler.Overview)
@@ -213,6 +219,10 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	authenticated.GET("/model-usage/summary", appmiddleware.RequireRoles("ADMIN", "MANAGER"), modelUsageHandler.Summary)
 	authenticated.GET("/audit-logs", appmiddleware.RequireRoles("ADMIN"), auditHandler.List)
 	authenticated.GET("/dashboard/operations", dashboardHandler.Summary)
+	authenticated.GET("/admin/registration-applications", appmiddleware.RequireRoles("ADMIN"), authHandler.ListRegistrationApplications)
+	authenticated.GET("/admin/roles", appmiddleware.RequireRoles("ADMIN"), authHandler.ListRoles)
+	authenticated.POST("/admin/registration-applications/:id/approve", appmiddleware.RequireRoles("ADMIN"), authHandler.ApproveRegistration)
+	authenticated.POST("/admin/registration-applications/:id/reject", appmiddleware.RequireRoles("ADMIN"), authHandler.RejectRegistration)
 	authenticated.GET("/admin/ping", appmiddleware.RequireRoles("ADMIN"), func(c *gin.Context) {
 		response.OK(c, gin.H{"status": "ok"})
 	})

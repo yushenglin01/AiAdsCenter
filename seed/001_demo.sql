@@ -11,10 +11,10 @@ INSERT IGNORE INTO roles (id, code, name, description) VALUES
 ('10000000-0000-4000-8000-000000000005', 'VIEWER', '只读用户', ''),
 ('10000000-0000-4000-8000-000000000006', 'SYSTEM_AGENT', '系统 Agent', '');
 
-INSERT IGNORE INTO users (id, tenant_id, username, display_name, password_hash, status) VALUES
-('20000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', 'admin', 'Demo Admin', '$2y$10$y7YdhNxiVu/KquwEaxc2p..98OZqV7ekI/KPiScWnM7WUZLAv4hxS', 'ACTIVE'),
-('20000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000001', 'manager', 'Demo Manager', '$2y$10$y7YdhNxiVu/KquwEaxc2p..98OZqV7ekI/KPiScWnM7WUZLAv4hxS', 'ACTIVE'),
-('20000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000001', 'operator', 'Demo Operator', '$2y$10$y7YdhNxiVu/KquwEaxc2p..98OZqV7ekI/KPiScWnM7WUZLAv4hxS', 'ACTIVE');
+INSERT IGNORE INTO users (id, tenant_id, username, email, display_name, department, job_title, password_hash, status, email_verified_at, approved_at) VALUES
+('20000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', 'admin', 'admin@demo.local', 'Demo Admin', '平台管理', '系统管理员', '$2y$10$y7YdhNxiVu/KquwEaxc2p..98OZqV7ekI/KPiScWnM7WUZLAv4hxS', 'ACTIVE', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3)),
+('20000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000001', 'manager', 'manager@demo.local', 'Demo Manager', '广告投放', '投放负责人', '$2y$10$y7YdhNxiVu/KquwEaxc2p..98OZqV7ekI/KPiScWnM7WUZLAv4hxS', 'ACTIVE', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3)),
+('20000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000001', 'operator', 'operator@demo.local', 'Demo Operator', '广告投放', '投放优化师', '$2y$10$y7YdhNxiVu/KquwEaxc2p..98OZqV7ekI/KPiScWnM7WUZLAv4hxS', 'ACTIVE', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3));
 
 INSERT IGNORE INTO user_roles (tenant_id, user_id, role_id) VALUES
 ('00000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001'),

@@ -1,4 +1,4 @@
-# 阶段十一 API（项目 1.1.1）
+# 阶段十三 API（项目 1.3.0）
 
 所有业务 API 使用 `/api/v1` 前缀，响应格式为 `{ code, message, data, request_id }`。
 
@@ -7,7 +7,7 @@
 ## 接入约定
 
 - 本地默认地址：`http://localhost:8080`。
-- 除 `/health`、`/api/v1/auth/login` 和 `/api/v1/auth/refresh` 外，所有端点都要求 `Authorization: Bearer <access_token>`。
+- 除 `/health`、注册配置、注册、邮箱确认、重发确认、登录和刷新端点外，所有端点都要求 `Authorization: Bearer <access_token>`。
 - JSON 请求使用 `Content-Type: application/json`；导入接口也接受 `multipart/form-data`。
 - ID 均为 UUID 字符串；日期使用 `YYYY-MM-DD`，时间戳使用带时区的 RFC 3339。
 - 服务端从 Access Token 确定 `tenant_id`，客户端不能通过请求参数切换租户。跨租户资源统一按不存在处理。
@@ -40,7 +40,7 @@
 
 ## 认证与快速调用
 
-登录返回 Access Token 与 Refresh Token；`expires_in` 是 Access Token 的有效秒数。Refresh Token 只能提交给刷新端点，不能用于 Bearer 认证。
+成员注册状态依次为 `PENDING_EMAIL`、`PENDING_APPROVAL`、`ACTIVE`，管理员也可将申请置为 `REJECTED`，停用账号为 `DISABLED`。邮箱确认不等于授权；只有 `ACTIVE` 成员可以登录。登录接受公司邮箱或用户名，返回 Access Token 与 Refresh Token；`expires_in` 是 Access Token 的有效秒数。Refresh Token 只能提交给刷新端点，不能用于 Bearer 认证。
 
 ```bash
 # 登录
@@ -89,11 +89,19 @@ Token 响应的 `data`：
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | GET | `/health` | No | MySQL 与 Redis 健康检查 |
-| POST | `/api/v1/auth/login` | No | 使用 username、password 登录；公司由服务端配置固定 |
+| GET | `/api/v1/auth/registration-config` | No | 读取注册开关、允许的公司邮箱域名和密码规则 |
+| POST | `/api/v1/auth/register` | No | 提交内部成员申请并发送邮箱确认；重复申请返回通用受理结果 |
+| POST | `/api/v1/auth/verify-email` | No | 消费一次性限时确认 Token，进入待管理员授权状态 |
+| POST | `/api/v1/auth/resend-verification` | No | 按冷却时间重发确认邮件；响应不暴露账号是否存在 |
+| POST | `/api/v1/auth/login` | No | 使用公司邮箱或用户名、密码登录；仅 ACTIVE 成员可登录 |
 | POST | `/api/v1/auth/refresh` | No | 刷新 Token 对 |
 | GET | `/api/v1/auth/me` | Bearer | 当前用户与角色 |
 | GET | `/api/v1/tenants/current` | Bearer | JWT 绑定的当前租户 |
 | GET | `/api/v1/admin/ping` | ADMIN | RBAC 验证端点 |
+| GET | `/api/v1/admin/registration-applications` | ADMIN | 按状态读取成员申请 |
+| GET | `/api/v1/admin/roles` | ADMIN | 读取可授予的人类用户角色，不包含 SYSTEM_AGENT |
+| POST | `/api/v1/admin/registration-applications/:id/approve` | ADMIN | 为已确认邮箱的申请分配角色并授权登录 |
+| POST | `/api/v1/admin/registration-applications/:id/reject` | ADMIN | 驳回待授权申请并记录原因 |
 | POST/GET | `/api/v1/games` | ADMIN/MANAGER 写；登录用户读 | 创建或列出游戏 |
 | GET/PUT | `/api/v1/games/:id` | ADMIN/MANAGER 写；登录用户读 | 查询或更新游戏 |
 | POST/GET | `/api/v1/channels` | ADMIN 写；登录用户读 | 创建或列出渠道 |
@@ -110,8 +118,9 @@ Token 响应的 `data`：
 | GET | `/api/v1/imports`、`/imports/:id` | 登录用户 | 导入记录 |
 | GET | `/api/v1/mmp-connections` | 登录用户 | MMP 连接、凭证配置布尔状态与健康；不返回 Token |
 | PUT | `/api/v1/mmp-connections/appsflyer` | ADMIN/MANAGER | 保存游戏到 AppsFlyer App ID 的映射 |
-| GET | `/api/v1/mmp-sync-runs` | 登录用户 | AppsFlyer 同步运行、行数、告警和安全错误分类 |
-| POST | `/api/v1/mmp-connections/:id/sync` | ADMIN/MANAGER/OPERATOR | 同步最多 7 天安装与指定付费事件 |
+| PUT | `/api/v1/mmp-connections/adjust` | ADMIN/MANAGER | 保存游戏到 Adjust App Token 的映射 |
+| GET | `/api/v1/mmp-sync-runs` | 登录用户 | AppsFlyer/Adjust 同步运行、行数、告警和安全错误分类 |
+| POST | `/api/v1/mmp-connections/:id/sync` | ADMIN/MANAGER/OPERATOR | 手工同步；AppsFlyer 最多 7 天，Adjust 最多 31 天 |
 | POST | `/api/v1/metrics/recalculate?game_id=...` | ADMIN/MANAGER/OPERATOR/ANALYST | 重算指标并执行三类分析 |
 | GET | `/api/v1/metrics/overview` | 登录用户 | 经营总览与去重风险计数 |
 | GET | `/api/v1/metrics/campaigns`、`/campaigns/:id` | 登录用户 | 计划聚合指标与详情 |
@@ -281,4 +290,6 @@ AppsFlyer 连接配置示例：
 }
 ```
 
-同步请求为 `{ "from": "2026-08-01", "to": "2026-08-03" }`。连接器并行读取官方 Raw Data Pull API v5 的 `installs_report` 和 `in_app_events_report`，以 UTC 日期和 USD 聚合；campaign_id 必须能匹配当前租户的广告计划。相同连接和日期范围重复提交返回已有成功运行。未配置 `GAI_APPSFLYER_API_TOKEN`、达到 20 万行/50MB、负收入或计划未映射时明确失败。
+Adjust 使用同一请求结构，其中 `external_app_id` 填写 Adjust App Token。同步请求为 `{ "from": "2026-08-01", "to": "2026-08-03" }`。AppsFlyer 连接器并行读取 Raw Data Pull API v5 的 `installs_report` 和 `in_app_events_report`；Adjust 连接器读取 Report Service API，并使用配置的 activation、payer、revenue 指标 slug。两者都按 UTC 日期和 USD 确定性聚合；campaign_id 必须能匹配当前租户的广告计划。相同连接和日期范围重复提交返回已有成功运行，成功导入会事务性替换同来源、游戏、日期范围的 MMP 指标以吸收延迟归因修正。
+
+自动拉取由常驻 Worker 执行。设置 `GAI_MMP_AUTO_SYNC_ENABLED=true`、`GAI_MMP_AUTO_SYNC_INTERVAL=1h` 与 `GAI_MMP_AUTO_SYNC_LOOKBACK_DAYS=3` 后，Worker 启动时立即执行一次，之后按间隔扫描所有租户的 ACTIVE/READY 连接；同一连接和滚动窗口命中同步幂等键时不会再次请求上游，失败连接会在下一轮重试。实际窗口会自动限制在 Provider 的最大范围内。API Token 和 Adjust 事件指标映射只从服务端环境变量读取。
