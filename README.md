@@ -1,7 +1,7 @@
 # AdNova · 星曜智投
 
 <p align="center">
-  <img src="docs/assets/adnova-hero.png" alt="AdNova 将多平台广告与归因数据汇聚为确定性分析、智能建议和人工审批" width="100%" />
+  <img src="docs/assets/adnova-hero-v2.png" alt="AdNova 让每一笔投放穿越数据噪声" width="100%" />
 </p>
 
 <p align="center"><strong>让分散的买量数据，变成可验证、可解释、可审批的增长决策。</strong></p>
