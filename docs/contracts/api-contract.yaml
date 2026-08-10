@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: AdNova API
-  version: 1.4.0
+  version: 1.4.1
   description: |
     AdNova 单公司 MVP 的当前 HTTP 契约。业务响应统一使用 Envelope，除健康检查、注册流程、登录和刷新外均使用 Bearer Access Token。
     租户范围由 Token 决定；客户端可通过 X-Request-ID 和 X-Trace-ID 传递链路标识。
@@ -146,9 +146,14 @@ paths:
         "409": {description: 相同批次标识对应不同规范化内容}
   /api/v1/mmp-connections:
     get:
-      summary: 列出租户内 MMP 连接与服务端凭证配置状态；不返回 Token
+      summary: 列出租户内 MMP 连接、凭证配置与验证状态；不返回 Token
       security: [{bearerAuth: []}]
-      responses: {"200": {description: MMP 连接列表}}
+      responses:
+        "200":
+          description: MMP 连接列表
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MMPConnectionListEnvelope"}
   /api/v1/mmp-connections/appsflyer:
     put:
       summary: ADMIN/MANAGER 保存游戏到 AppsFlyer App ID 的映射
@@ -158,7 +163,15 @@ paths:
         content:
           application/json:
             schema: {$ref: "#/components/schemas/ConfigureMMPConnectionRequest"}
-      responses: {"201": {description: 连接已保存；只返回 credential_configured 布尔值}, "400": {description: 输入无效}, "403": {description: 无权限}, "409": {description: 已成功同步的连接禁止直接更换 App ID}}
+      responses:
+        "201":
+          description: 连接已保存；只返回 credential_configured 布尔值
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MMPConnectionEnvelope"}
+        "400": {description: 输入无效}
+        "403": {description: 无权限}
+        "409": {description: 已成功同步的连接禁止直接更换 App ID}
   /api/v1/mmp-connections/adjust:
     put:
       summary: ADMIN/MANAGER 保存游戏到 Adjust App Token 的映射
@@ -168,7 +181,15 @@ paths:
         content:
           application/json:
             schema: {$ref: "#/components/schemas/ConfigureMMPConnectionRequest"}
-      responses: {"201": {description: 连接已保存；只返回 credential_configured 布尔值}, "400": {description: 输入无效}, "403": {description: 无权限}, "409": {description: 已成功同步的连接禁止直接更换 App Token}}
+      responses:
+        "201":
+          description: 连接已保存；只返回 credential_configured 布尔值
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MMPConnectionEnvelope"}
+        "400": {description: 输入无效}
+        "403": {description: 无权限}
+        "409": {description: 已成功同步的连接禁止直接更换 App Token}
   /api/v1/mmp-sync-runs:
     get:
       summary: 列出租户内 AppsFlyer/Adjust 同步运行
@@ -366,7 +387,7 @@ paths:
       responses: {"200": {description: text/event-stream 工作流快照流}, "404": {description: 不存在或不属于当前公司}}
   /api/v1/openclaw/commands:
     post:
-      summary: OpenClaw 内部命令入口；支持工作流、审批 Inbox 与通知操作
+      summary: OpenClaw 内部命令入口；支持结构化命令及受确认门禁保护的自然语言解析
       security: [{bearerAuth: []}]
       requestBody:
         required: true
@@ -375,7 +396,7 @@ paths:
             schema: {$ref: "#/components/schemas/OpenClawCommand"}
       responses:
         "200":
-          description: 查询或内部状态操作完成
+          description: 查询、内部状态操作或自然语言命令确认提示
           content: {application/json: {schema: {$ref: "#/components/schemas/OpenClawResultEnvelope"}}}
         "202":
           description: 工作流已启动或命中工作流幂等记录
@@ -713,7 +734,9 @@ components:
     OpenClawCommand:
       type: object
       additionalProperties: false
-      required: [intent, input]
+      oneOf:
+        - {required: [intent, input]}
+        - {required: [message]}
       properties:
         intent: {type: string, enum: [RUN_FULL_ANALYSIS, GET_WORKFLOW_STATUS, LIST_PENDING_APPROVALS, LIST_NOTIFICATIONS, MARK_NOTIFICATION_READ]}
         input:
@@ -726,12 +749,14 @@ components:
             workflow_id: {type: string, format: uuid}
             notification_status: {type: string, enum: [UNREAD, READ]}
             notification_id: {type: string, format: uuid}
+        message: {type: string, minLength: 1, maxLength: 2000, description: 由已配置 LLM 解析为白名单命令；结构化 intent/input 不经过 LLM。}
+        confirm: {type: boolean, default: false, description: 仅用于确认自然语言解析出的 RUN_FULL_ANALYSIS。}
     OpenClawResult:
       type: object
       required: [intent, status, data]
       properties:
         intent: {type: string, enum: [RUN_FULL_ANALYSIS, GET_WORKFLOW_STATUS, LIST_PENDING_APPROVALS, LIST_NOTIFICATIONS, MARK_NOTIFICATION_READ]}
-        status: {type: string, enum: [ACCEPTED, SUCCEEDED]}
+        status: {type: string, enum: [NEEDS_CONFIRMATION, ACCEPTED, SUCCEEDED]}
         data: {description: 与 intent 对应的工作流、审批列表或通知数据}
     OpenClawResultEnvelope:
       allOf:
@@ -745,6 +770,26 @@ components:
         game_id: {type: string, format: uuid}
         external_app_id: {type: string, minLength: 2, maxLength: 255}
         status: {type: string, enum: [ACTIVE, DISABLED], default: ACTIVE}
+    MMPConnection:
+      type: object
+      required: [id, game_id, provider, external_app_id, status, credential_configured, health]
+      properties:
+        id: {type: string, format: uuid}
+        game_id: {type: string, format: uuid}
+        provider: {type: string, enum: [APPSFLYER, ADJUST]}
+        external_app_id: {type: string}
+        status: {type: string, enum: [ACTIVE, DISABLED]}
+        credential_configured: {type: boolean, description: 只表示部署级凭证和所需指标映射是否齐全}
+        health: {type: string, enum: [READY, UNVERIFIED, NOT_CONFIGURED, DISABLED], description: READY 只在至少一次同步成功后返回}
+        last_sync_at: {type: string, format: date-time, nullable: true}
+    MMPConnectionEnvelope:
+      allOf:
+        - {$ref: "#/components/schemas/Envelope"}
+        - {type: object, properties: {data: {$ref: "#/components/schemas/MMPConnection"}}}
+    MMPConnectionListEnvelope:
+      allOf:
+        - {$ref: "#/components/schemas/Envelope"}
+        - {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/MMPConnection"}}}}
     MMPSyncRequest:
       type: object
       additionalProperties: false

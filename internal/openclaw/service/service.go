@@ -42,8 +42,10 @@ type Input struct {
 }
 
 type Command struct {
-	Intent string `json:"intent"`
-	Input  Input  `json:"input"`
+	Intent  string `json:"intent,omitempty"`
+	Input   Input  `json:"input,omitempty"`
+	Message string `json:"message,omitempty"`
+	Confirm bool   `json:"confirm,omitempty"`
 }
 
 type Actor struct {
@@ -63,20 +65,44 @@ type Service struct {
 	workflow      Workflow
 	approvals     Approvals
 	notifications Notifications
+	parser        Parser
 }
 
-func New(workflow Workflow, approvals Approvals, notifications Notifications) *Service {
-	return &Service{workflow: workflow, approvals: approvals, notifications: notifications}
+func New(workflow Workflow, approvals Approvals, notifications Notifications, parsers ...Parser) *Service {
+	result := &Service{workflow: workflow, approvals: approvals, notifications: notifications}
+	if len(parsers) > 0 {
+		result.parser = parsers[0]
+	}
+	return result
 }
 
 func (s *Service) Execute(ctx context.Context, actor Actor, command Command) (*Result, error) {
+	parsedByLLM := false
+	var parsed *ParsedCommand
+	if command.Intent == "" {
+		if command.Message == "" {
+			return nil, fmt.Errorf("intent or message is required")
+		}
+		if s.parser == nil || !s.parser.Enabled() {
+			return nil, fmt.Errorf("OpenClaw natural-language parsing is not configured")
+		}
+		var err error
+		parsed, err = s.parser.Parse(ctx, actor, command.Message)
+		if err != nil {
+			return nil, err
+		}
+		command.Intent, command.Input, parsedByLLM = parsed.Intent, parsed.Input, true
+		if parsed.RequiresConfirmation && !command.Confirm {
+			return &Result{Intent: parsed.Intent, Status: "NEEDS_CONFIRMATION", Data: map[string]any{"parsed_command": parsed, "executed": false}}, nil
+		}
+	}
 	switch command.Intent {
 	case IntentRunFullAnalysis:
 		row, err := s.workflow.Start(ctx, actor.TenantID, actor.UserID, actor.TraceID, workflowservice.StartInput{GameID: command.Input.GameID, CampaignID: command.Input.CampaignID, AnalysisDate: command.Input.AnalysisDate})
 		if err != nil {
 			return nil, err
 		}
-		return &Result{Intent: command.Intent, Status: "ACCEPTED", Accepted: true, Data: row}, nil
+		return commandResult(command.Intent, "ACCEPTED", true, row, parsedByLLM, parsed), nil
 	case IntentGetWorkflowStatus:
 		if command.Input.WorkflowID == "" {
 			return nil, fmt.Errorf("workflow_id is required")
@@ -85,19 +111,19 @@ func (s *Service) Execute(ctx context.Context, actor Actor, command Command) (*R
 		if err != nil {
 			return nil, err
 		}
-		return &Result{Intent: command.Intent, Status: "SUCCEEDED", Data: row}, nil
+		return commandResult(command.Intent, "SUCCEEDED", false, row, parsedByLLM, parsed), nil
 	case IntentListPendingApprovals:
 		rows, err := s.approvals.List(ctx, actor.TenantID, approvaldomain.Filter{Status: approvaldomain.StatusPending, Limit: 50})
 		if err != nil {
 			return nil, err
 		}
-		return &Result{Intent: command.Intent, Status: "SUCCEEDED", Data: rows}, nil
+		return commandResult(command.Intent, "SUCCEEDED", false, rows, parsedByLLM, parsed), nil
 	case IntentListNotifications:
 		rows, err := s.notifications.List(ctx, actor.TenantID, command.Input.NotificationStatus)
 		if err != nil {
 			return nil, err
 		}
-		return &Result{Intent: command.Intent, Status: "SUCCEEDED", Data: rows}, nil
+		return commandResult(command.Intent, "SUCCEEDED", false, rows, parsedByLLM, parsed), nil
 	case IntentMarkNotificationRead:
 		if command.Input.NotificationID == "" {
 			return nil, fmt.Errorf("notification_id is required")
@@ -106,8 +132,15 @@ func (s *Service) Execute(ctx context.Context, actor Actor, command Command) (*R
 		if err != nil {
 			return nil, err
 		}
-		return &Result{Intent: command.Intent, Status: "SUCCEEDED", Data: row}, nil
+		return commandResult(command.Intent, "SUCCEEDED", false, row, parsedByLLM, parsed), nil
 	default:
 		return nil, fmt.Errorf("unsupported OpenClaw intent %s", command.Intent)
 	}
+}
+
+func commandResult(intent, status string, accepted bool, data any, parsedByLLM bool, parsed *ParsedCommand) *Result {
+	if !parsedByLLM {
+		return &Result{Intent: intent, Status: status, Accepted: accepted, Data: data}
+	}
+	return &Result{Intent: intent, Status: status, Accepted: accepted, Data: map[string]any{"result": data, "parsed_command": parsed, "executed": true}}
 }

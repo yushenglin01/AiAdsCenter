@@ -10,7 +10,6 @@ import (
 	businessservice "github.com/example/adnova/internal/business/service"
 	"github.com/example/adnova/internal/config"
 	creativeanalysisrepo "github.com/example/adnova/internal/creative/analysis/repository"
-	"github.com/example/adnova/internal/llm"
 	metricsrepo "github.com/example/adnova/internal/metrics/repository"
 	metricsservice "github.com/example/adnova/internal/metrics/service"
 	researchrepo "github.com/example/adnova/internal/research/repository"
@@ -19,14 +18,16 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewBusinessService(cfg config.Config, db *gorm.DB, enqueuer taskqueue.Enqueuer) (*businessservice.Service, error) {
+func NewBusinessService(cfg config.Config, db *gorm.DB, enqueuer taskqueue.Enqueuer, intelligences ...*AgentIntelligence) (*businessservice.Service, error) {
 	prompts, err := businessservice.LoadPrompts(cfg.LLM.PromptDir, cfg.LLM.SchemaDir)
 	if err != nil {
 		return nil, err
 	}
-	var llmClient llm.Client = llm.NewMock(cfg.LLM.Model)
-	if cfg.LLM.Provider == "openai-compatible" {
-		llmClient, err = llm.NewOpenAICompatible(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model, cfg.LLM.Timeout)
+	var agentIntelligence *AgentIntelligence
+	if len(intelligences) > 0 {
+		agentIntelligence = intelligences[0]
+	} else {
+		agentIntelligence, err = NewAgentIntelligence(cfg, db)
 		if err != nil {
 			return nil, err
 		}
@@ -38,12 +39,13 @@ func NewBusinessService(cfg config.Config, db *gorm.DB, enqueuer taskqueue.Enque
 		attributionrepo.New(db),
 		creativeanalysisrepo.New(db),
 		researchrepo.New(db),
-		llmClient,
+		agentIntelligence.Client,
 		prompts,
 		cfg.LLM.Model,
 		enqueuer,
 		cfg.Queue.TaskTimeout,
 		auditservice.New(auditrepo.New(db)),
+		businessservice.WithReportPolisher(agentIntelligence.Runtime, agentIntelligence.Contracts["report-agent"]),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("initialize business service: %w", err)

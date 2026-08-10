@@ -7,29 +7,44 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
 
 type OpenAICompatibleClient struct {
-	baseURL string
-	apiKey  string
-	model   string
-	client  *http.Client
-	retries int
+	provider string
+	baseURL  string
+	apiKey   string
+	model    string
+	client   *http.Client
+	retries  int
 }
 
 func NewOpenAICompatible(baseURL, apiKey, model string, timeout time.Duration) (*OpenAICompatibleClient, error) {
+	return NewOpenAICompatibleForProvider("openai-compatible", baseURL, apiKey, model, timeout)
+}
+
+func NewOpenAICompatibleForProvider(provider, baseURL, apiKey, model string, timeout time.Duration) (*OpenAICompatibleClient, error) {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	if strings.TrimSpace(baseURL) == "" || strings.TrimSpace(apiKey) == "" || strings.TrimSpace(model) == "" {
 		return nil, &ClientError{Category: ErrorConfiguration, Message: "OpenAI-compatible base URL, API key and model are required"}
+	}
+	if provider == "" {
+		return nil, &ClientError{Category: ErrorConfiguration, Message: "LLM provider name is required"}
+	}
+	parsedBaseURL, err := url.Parse(baseURL)
+	if err != nil || parsedBaseURL.Host == "" || (parsedBaseURL.Scheme != "https" && parsedBaseURL.Scheme != "http") || parsedBaseURL.User != nil || parsedBaseURL.RawQuery != "" || parsedBaseURL.Fragment != "" {
+		return nil, &ClientError{Category: ErrorConfiguration, Message: "OpenAI-compatible base URL must be an absolute HTTP(S) URL without credentials, query or fragment"}
 	}
 	if timeout <= 0 {
 		timeout = 30 * time.Second
 	}
-	return &OpenAICompatibleClient{baseURL: strings.TrimRight(baseURL, "/"), apiKey: apiKey, model: model, client: &http.Client{Timeout: timeout}, retries: 2}, nil
+	return &OpenAICompatibleClient{provider: provider, baseURL: baseURL, apiKey: apiKey, model: model, client: &http.Client{Timeout: timeout}, retries: 2}, nil
 }
 
-func (c *OpenAICompatibleClient) Name() string { return "openai-compatible" }
+func (c *OpenAICompatibleClient) Name() string { return c.provider }
 
 func (c *OpenAICompatibleClient) GenerateStructured(ctx context.Context, req GenerateRequest) (*GenerateResponse, error) {
 	started := time.Now()
@@ -90,7 +105,11 @@ func (c *OpenAICompatibleClient) GenerateStructured(ctx context.Context, req Gen
 		if json.Unmarshal(responseBody, &decoded) != nil || len(decoded.Choices) == 0 || !json.Valid([]byte(decoded.Choices[0].Message.Content)) {
 			return nil, &ClientError{Category: ErrorMalformed, Message: "model provider returned malformed structured JSON", Retryable: false}
 		}
-		return &GenerateResponse{Content: json.RawMessage(decoded.Choices[0].Message.Content), Model: decoded.Model, FinishReason: decoded.Choices[0].FinishReason, Usage: Usage{InputTokens: decoded.Usage.PromptTokens, OutputTokens: decoded.Usage.CompletionTokens}, Latency: time.Since(started)}, nil
+		responseModel := strings.TrimSpace(decoded.Model)
+		if responseModel == "" {
+			responseModel = model
+		}
+		return &GenerateResponse{Content: json.RawMessage(decoded.Choices[0].Message.Content), Model: responseModel, FinishReason: decoded.Choices[0].FinishReason, Usage: Usage{InputTokens: decoded.Usage.PromptTokens, OutputTokens: decoded.Usage.CompletionTokens}, Latency: time.Since(started)}, nil
 	}
 	return nil, &ClientError{Category: ErrorUnavailable, Message: "model provider unavailable", Retryable: true}
 }

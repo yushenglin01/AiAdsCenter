@@ -25,11 +25,11 @@ func LoadPrompts(promptDirectory, schemaDirectory string) (PromptSet, error) {
 		}
 		return strings.TrimSpace(string(value)), nil
 	}
-	system, err := read(promptDirectory, "business_agent_system_v1.1.0.txt")
+	system, err := read(promptDirectory, "business_agent_system_v1.2.0.txt")
 	if err != nil {
 		return PromptSet{}, err
 	}
-	user, err := read(promptDirectory, "business_agent_user_v1.1.0.txt")
+	user, err := read(promptDirectory, "business_agent_user_v1.2.0.txt")
 	if err != nil {
 		return PromptSet{}, err
 	}
@@ -37,5 +37,5 @@ func LoadPrompts(promptDirectory, schemaDirectory string) (PromptSet, error) {
 	if err != nil {
 		return PromptSet{}, err
 	}
-	return PromptSet{Name: "business_agent", Version: "1.1.0", SchemaName: "business-agent-output", SchemaVersion: "1.0.0", OutputSchema: schema, BusinessSystem: system, BusinessUser: user}, nil
+	return PromptSet{Name: "business_agent", Version: "1.2.0", SchemaName: "business-agent-output", SchemaVersion: "1.0.0", OutputSchema: schema, BusinessSystem: system, BusinessUser: user}, nil
 }

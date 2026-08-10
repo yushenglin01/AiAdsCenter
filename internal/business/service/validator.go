@@ -74,6 +74,9 @@ func collectEvidence(input json.RawMessage) map[string]map[string]bool {
 		switch typed := current.(type) {
 		case map[string]any:
 			for key, item := range typed {
+				if key == "agent_context" {
+					continue
+				}
 				if scalar(item) {
 					if result[key] == nil {
 						result[key] = map[string]bool{}

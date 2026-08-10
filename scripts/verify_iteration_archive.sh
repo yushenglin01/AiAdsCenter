@@ -2,15 +2,15 @@
 set -eu
 
 version=$(tr -d '[:space:]' < VERSION)
-test "$version" = "1.4.0"
+test "$version" = "1.4.1"
 grep -q "\"version\": \"${version}\"" web/package.json
 grep -q "version: ${version}" docs/contracts/api-contract.yaml
 
 test -f docs/iterations/README.md
 test -f docs/releases/CHANGELOG.md
 test -f "docs/releases/v${version}.md"
-grep -q 'DEV-20260810-001' docs/iterations/README.md
-grep -q 'DEV-20260810-001' "docs/releases/v${version}.md"
+grep -q 'DEV-20260810-003' docs/iterations/README.md
+grep -q 'DEV-20260810-003' "docs/releases/v${version}.md"
 
 for required in \
   docs/archive/api-contracts/MANIFEST.md \
@@ -50,6 +50,13 @@ for prompt in configs/prompts/business_agent_*_v1.1.0.txt
 do
   grep -q '^prompt_name:' "$prompt"
   grep -q '^prompt_version: 1.1.0$' "$prompt"
+  grep -q '^supported_schema_version: 1.0.0$' "$prompt"
+done
+
+for prompt in configs/prompts/business_agent_*_v1.2.0.txt
+do
+  grep -q '^prompt_name:' "$prompt"
+  grep -q '^prompt_version: 1.2.0$' "$prompt"
   grep -q '^supported_schema_version: 1.0.0$' "$prompt"
 done
 

@@ -1,10 +1,12 @@
-# 阶段十四架构（项目 1.4.0）
+# 阶段十四架构（项目 1.4.1）
 
 当前采用模块化单体。`cmd/server` 负责 HTTP、数据库 migration 与队列投递，`cmd/worker` 运行 Asynq 消费者和 Outbox dispatcher，`cmd/ingestion-worker` 可选消费外部 Kafka 数据并触发确定性分析。业务调用方向为 Handler → Service → Repository；Handler 不访问 GORM，Repository 查询显式接收 `tenant_id`。
 
 认证使用短期 Access Token 与长期 Refresh Token。当前按单公司模式运行，登录接口不接收公司参数，账号查询只能使用服务端 `GAI_TENANT_DEFAULT_ID`。签名 Claims 仍包含 `user_id`、`tenant_id` 和角色，为数据安全边界及后续多公司扩展保留稳定结构。RBAC 在服务端中间件执行，前端守卫只用于改善体验。
 
 1.3.0 将 AppsFlyer 专用同步服务抽象为 provider-neutral MMP Fetcher，并增加 Adjust Report Service 只读实现。连接配置仍按 tenant/game/provider 隔离；全局 API Token 与事件指标映射只存在于服务端环境，连接查询仅返回 `credential_configured`。常驻 Worker 启动时及固定间隔扫描所有租户连接，按 Provider 最大范围执行滚动回看；SYSTEM_AGENT 发起的运行复用同一幂等、审计和权威区间导入路径。
+
+1.4.1 收紧连接健康语义：ACTIVE 映射和服务端凭证齐全但尚无成功同步时返回 `UNVERIFIED`，只有完成至少一次真实拉取与导入后才返回 `READY`。`NOT_CONFIGURED` 表示部署级凭证或指标映射缺失，`DISABLED` 表示连接停用；`UNVERIFIED` 仍允许发起首次同步，避免把验证入口自身锁死。
 
 MySQL 保存业务数据、Agent 任务、事务 Outbox 和报告快照；Redis 保存 Asynq 待执行任务与重试元数据。API 启动时按文件名顺序执行 `migrations/*.up.sql`，在 `schema_migrations` 保存 SHA-256；Worker 等待 API 健康后仅打开数据库，避免并发迁移。已发布 migration 校验值变化时拒绝启动。
 
@@ -26,13 +28,13 @@ MMP 同步执行使用数据库 `claim_token + locked_until` 原子抢占，运�
 
 阶段三分析流水线依次执行指标重算、经营规则、归因差异和素材疲劳分析。指标使用十进制定点数与安全除法，分母为零时返回零，统一保留 8 位精度。规则阈值存储在 `analysis_rules`，ADMIN/MANAGER 可修改阈值、连续天数和启停状态。每条发现保存生成时的证据 JSON，前端只展示结果，不重新计算。
 
-归因差异率定义为 `abs(A-B)/max(abs(A),abs(B))`；素材疲劳评分由近 7 日 CTR 降幅（60%）和最新频次归一值（40%）组成。两者都是确定性分析器，当前不调用 LLM。指标重算流水线仍同步；Business Agent 已迁移为可重试的异步任务，两者保持明确边界。
+归因差异率定义为 `abs(A-B)/max(abs(A),abs(B))`；素材疲劳评分由近 7 日 CTR 降幅（60%）和最新频次归一值（40%）组成。Attribution 始终是确定性分析器；Creative 先执行同一确定性素材分析，再可选调用 LLM 解释已有 finding，模型不能新增或修改 finding。指标重算流水线仍同步；Business Agent 已迁移为可重试的异步任务，两者保持明确边界。
 
 Business Agent 定义为 `AgentSpec + Prompt + Tools + Permissions + Model + OutputSchema`。它只能调用八个注册工具：读取计划指标、历史基准、归因异常、素材发现、已核验研究来源、确定性 LTV 代理，以及创建建议和审批请求。预算修改、暂停计划、Shell、任意 HTTP 和 Raw SQL 均未注册，因此无法从 Agent 路径调用。
 
-模型边界由统一 `LLMClient.GenerateStructured` 隔离。Mock Client 根据结构化示例输入稳定生成结果；OpenAI-compatible Client 封装认证、JSON 请求映射、超时、429/5xx 有限重试、响应解析和安全错误分类。Provider 原始对象不会泄漏到业务层，API Key 不进入日志或数据库。
+模型边界由统一 `LLMClient.GenerateStructured` 和 Agent Intelligence Runtime 隔离。Mock Client 根据结构化示例输入稳定生成结果；OpenAI-compatible Client 封装认证、JSON 请求映射、超时、429/5xx 有限重试、响应解析和安全错误分类。Runtime 为 Research、Creative、OpenClaw 与 Report 统一记录 Provider、模型、Prompt/Schema 版本、Token 用量和校验状态。Provider 原始对象不会泄漏到业务层，API Key 不进入日志或数据库。
 
-`BusinessResultValidator` 在持久化建议前校验 JSON、置信度、证据实际值与目标值、允许动作，以及高风险人工审批要求。首次失败会携带校验错误重新生成一次；第二次失败进入 `MANUAL_REVIEW`，保留原始响应和校验错误，但不创建建议。任务、模型尝试、用量、经营发现、建议与审批请求分别存储，方便后续异步恢复和审计。任务保存 Schema 名称/版本，用量保存 Prompt 名称/版本和 Schema 版本；1.0.0 运行时加载不可变 Prompt 1.1.0 与输出 Schema 1.0.0。
+`BusinessResultValidator` 在持久化建议前校验 JSON、置信度、证据实际值与目标值、允许动作，以及高风险人工审批要求。首次失败会携带校验错误重新生成一次；第二次失败进入 `MANUAL_REVIEW`，保留原始响应和校验错误，但不创建建议。任务、模型尝试、用量、经营发现、建议与审批请求分别存储，方便后续异步恢复和审计。任务保存 Schema 名称/版本，用量保存 Prompt 名称/版本和 Schema 版本；当前运行时加载不可变 Business Prompt 1.2.0 与输出 Schema 1.0.0。Creative/Research 的工作流输出可作为 `agent_context` 帮助组织解释，但 Validator 明确排除该字段，不能把 LLM 文本转化为确定性数值证据。
 
 异步提交在同一 MySQL 事务中写入 `agent_tasks` 与 `task_outbox`。API 尝试即时投递，Worker 的 dispatcher 周期补偿未发布记录；Asynq 使用业务任务 UUID 作为 TaskID，重复投递按幂等成功处理。Worker 通过带来源状态条件的更新认领任务，并以心跳和超时租约恢复崩溃后残留的 RUNNING。失败在未耗尽时转为 RETRYING，耗尽后转 FAILED；每次重跑先删除该任务未完成的派生结果，终态重复交付直接返回。
 
@@ -44,9 +46,9 @@ SSE 端点每 500ms 读取租户范围内的任务快照，只在状态版本变
 
 Dashboard 运营汇总、模型用量和审计查询都以 tenant_id 为首要过滤条件。模型成本来自 model_usage_records 的 decimal 汇总；默认 Mock 成本为零，不伪造真实费用。
 
-0.7.0 增加统一 Agent Registry 和持久化 Workflow Orchestrator。完整分析按 OpenClaw、Data、Attribution、Creative、Research、Business、Report 顺序记录七个步骤；Data 先重算指标并物化经营规则，归因和素材 Agent 继续执行确定性分析，Business Agent 通过原有 Outbox/Asynq 异步运行，Report Agent 读取不可变报告快照。工作流读取时会对齐 Business 任务状态。
+0.7.0 增加统一 Agent Registry 和持久化 Workflow Orchestrator。完整分析按 OpenClaw、Data、Attribution、Creative、Research、Business、Report 顺序记录七个步骤；Data 先重算指标并物化经营规则，Attribution 保持确定性，Creative 和 Research 采用“确定性/已核验输入 + 可选 LLM 归纳”，Business Agent 通过原有 Outbox/Asynq 异步运行，Report Agent 读取不可变报告快照并可选润色摘要。工作流读取时会对齐 Business 任务状态。
 
-1.0.0 增加 research_sources 审核状态机。来源登记必须提供无凭证 HTTPS URL、发布方、发布日期与摘要，初始为 PENDING；ADMIN/MANAGER 核验后变为 VERIFIED。Research Agent 只读取当前租户、游戏/计划范围和 analysis_date 之前的 VERIFIED 来源，没有来源时返回 NO_VERIFIED_SOURCES，不生成市场事实。Business Prompt 1.1.0 明确研究来源只能解释背景，不能替代确定性指标证据。
+1.0.0 增加 research_sources 审核状态机。来源登记必须提供无凭证 HTTPS URL、发布方、发布日期与摘要，初始为 PENDING；ADMIN/MANAGER 核验后变为 VERIFIED。Research Agent 只读取当前租户、游戏/计划范围和 analysis_date 之前的 VERIFIED 来源，没有来源时返回 NO_VERIFIED_SOURCES，不生成市场事实。Research 的 LLM 输出只能引用输入中的 source_id，虚构来源会触发确定性回退；Business Prompt 1.2.0 明确研究来源与 `agent_context` 只能解释背景，不能替代确定性指标证据。
 
 实时研究连接器通过 `internal/research/websearch.Provider` 隔离供应商实现，首个实现使用 Brave Search API。API Key 只从服务端环境变量读取；请求强制 HTTPS、超时、响应大小上限、安全搜索和供应商错误分类。搜索结果默认是短暂响应，不会自动写入数据库或进入 Business Agent；只有用户显式选择、供应商计划允许结果存储且 `GAI_WEB_SEARCH_IMPORT_ENABLED=true` 时，才登记为 PENDING 来源。`research_sources` 保存发现方式、Provider、查询 SHA-256 与发现时间，原始查询不持久化；仍需 ADMIN/MANAGER 人工核验后才成为分析证据。
 
@@ -56,9 +58,9 @@ Agent 运行中心通过 workflow_steps 与 workflow_runs 的租户内联表聚�
 
 Data Agent 在重算前读取四类事实表和导入任务，输出行数、计划覆盖、最新日期、缺失/陈旧状态与失败导入数。它不会隐式触发外部同步；数据获取由显式导入、手工 MMP 同步或独立 Worker 定时任务负责，避免分析请求产生不可预期的外部副作用。
 
-报告由 `internal/report` 的确定性 Composer 生成，保存 report-agent 版本、研究来源 ID、SHA-256 source digest、workflow/task 标识和生成时间。Report Agent 返回这些溯源字段；报告中的外部链接只来自 VERIFIED 来源。
+报告由 `internal/report` 的确定性 Composer 生成，保存 report-agent 版本、研究来源 ID、SHA-256 source digest、workflow/task 标识和生成时间。可选 LLM 只允许改写摘要，并必须回显同一 source digest；失败、非法结构或摘要不一致时保留确定性摘要。Report Agent 返回完整溯源与增强状态；报告中的外部链接只来自 VERIFIED 来源。
 
-OpenClaw Agent 现在有真实 Executor 和五类内部指令：启动分析、读取工作流、列出待审批、列出通知和标记通知已读。它不提供自动审批决策；批准/驳回仍必须走人工 RBAC 与审计接口。外部消息推送仍为 NOT_CONFIGURED，且没有广告平台执行权限。
+OpenClaw Agent 现在有真实 Executor 和五类内部指令：启动分析、读取工作流、列出待审批、列出通知和标记通知已读。结构化命令不依赖模型；启用真实 LLM 后，自然语言解析器只能输出五类白名单意图，要求显式 ID、置信度门槛和严格 Schema。启动分析必须经过二次确认，模型永远不直接调用业务工具。它不提供自动审批决策；批准/驳回仍必须走人工 RBAC 与审计接口。外部消息推送仍为 NOT_CONFIGURED，且没有广告平台执行权限。
 
 0.8.0 为完整分析增加数据库级幂等键 `tenant + workflow_type + game + campaign + analysis_date`。服务先读取已有工作流，数据库唯一索引负责关闭并发窗口；竞争失败的请求回读胜出的持久化工作流，因此 API 重试不会重复创建步骤或 Business 任务。
 

@@ -13,6 +13,14 @@ type Repository struct{ db *gorm.DB }
 
 func New(db *gorm.DB) *Repository { return &Repository{db: db} }
 
+func (r *Repository) Create(ctx context.Context, row *agentdomain.ModelUsageRecord) error {
+	return r.db.WithContext(ctx).Create(row).Error
+}
+
+func (r *Repository) UpdateStatus(ctx context.Context, id, status string) error {
+	return r.db.WithContext(ctx).Model(&agentdomain.ModelUsageRecord{}).Where("id = ?", id).Update("status", status).Error
+}
+
 func (r *Repository) List(ctx context.Context, tenantID string, limit int) ([]agentdomain.ModelUsageRecord, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 100

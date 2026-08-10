@@ -9,7 +9,7 @@
 <p align="center"><strong>Turn fragmented user-acquisition data into verifiable, explainable, and approval-ready growth decisions.</strong></p>
 
 <p align="center">
-  <img alt="Version 1.4.0" src="https://img.shields.io/badge/version-1.4.0-6559ec" />
+  <img alt="Version 1.4.1" src="https://img.shields.io/badge/version-1.4.1-6559ec" />
   <img alt="Go 1.24+" src="https://img.shields.io/badge/Go-1.24%2B-00ADD8" />
   <img alt="Vue 3" src="https://img.shields.io/badge/Vue-3-42b883" />
   <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-2f855a" />
@@ -19,7 +19,7 @@ AdNova is an open-source advertising growth intelligence platform for global gam
 
 The current release completes **Stage 14: Scheduled Research Discovery**. Administrators and managers can configure tenant-scoped public-web research jobs for a game or campaign. A durable worker executes them with database leases, while every discovered source still enters a human-review queue before it can influence analysis.
 
-Current version: **1.4.0** · Latest iteration: **DEV-20260810-001** · See the [iteration history](docs/iterations/README.md) and [changelog](docs/releases/CHANGELOG.md).
+Current version: **1.4.1** · Latest iteration: **DEV-20260810-002** · See the [iteration history](docs/iterations/README.md) and [changelog](docs/releases/CHANGELOG.md).
 
 ## Why AdNova
 
@@ -130,16 +130,35 @@ After the Compose stack is ready, generate and import 30 days of representative 
 
 The script is idempotent. It recalculates metrics, executes three analysis categories, and submits one asynchronous mock Business Agent task for the Meta sample. The dataset contains an anomalous Meta campaign, a normal Google control, a scaling TikTok campaign, AppsFlyer attribution, game revenue, and creative-performance records.
 
-The default `LLM_PROVIDER=mock` mode demonstrates the full workflow without external model access. To use an OpenAI-compatible endpoint, set all four values:
+The default `LLM_PROVIDER=mock` mode demonstrates the full workflow without external model access. Real models share the OpenAI-compatible Chat Completions protocol. `openai` and `deepseek` use their official BaseURLs by default, while `openai-compatible` and `custom` support any compatible endpoint. An explicit BaseURL can override the default for every real provider:
 
 ```bash
-LLM_PROVIDER=openai-compatible
+# OpenAI
+LLM_PROVIDER=openai
+LLM_API_KEY=...
+LLM_MODEL=<openai-model-id>
+
+# DeepSeek
+LLM_PROVIDER=deepseek
+LLM_API_KEY=...
+LLM_MODEL=<deepseek-model-id>
+
+# Another compatible service or private gateway
+LLM_PROVIDER=custom
 LLM_BASE_URL=https://your-compatible-endpoint.example/v1
 LLM_API_KEY=...
-LLM_MODEL=...
+LLM_MODEL=<model-id>
+
+# Per-agent switches (effective with a real provider)
+LLM_RESEARCH_ENABLED=true
+LLM_CREATIVE_ENABLED=true
+LLM_OPENCLAW_ENABLED=true
+LLM_REPORT_ENABLED=false
 ```
 
-The client supports structured JSON outputs, timeouts, bounded retries, normalized token usage, and safe error categories. API keys and complete sensitive prompts are not logged.
+The client supports structured JSON outputs, timeouts, bounded retries, normalized token usage, and safe error categories. API keys and complete sensitive prompts are not logged. Custom BaseURLs must be absolute HTTP(S) URLs without embedded credentials, query parameters, or fragments.
+
+Research, Creative, and OpenClaw enable LLM enhancement by default once a real provider is configured. Report summary polishing remains opt-in. Research can synthesize only human-verified sources, Creative can explain only deterministic findings, and Report can rewrite only the summary while preserving the source digest. Provider or semantic-validation failures fall back to deterministic output. Data and Attribution remain fully deterministic. Creative currently receives structured performance data, not image or video assets, so multimodal understanding is not claimed.
 
 ## Real Data and Integrations
 

@@ -12,6 +12,69 @@ func TestKafkaDisabledDoesNotRequireConnection(t *testing.T) {
 	cfg, err := Load()
 	require.NoError(t, err)
 	require.False(t, cfg.Kafka.Enabled)
+	require.True(t, cfg.LLM.ResearchEnabled)
+	require.True(t, cfg.LLM.CreativeEnabled)
+	require.True(t, cfg.LLM.OpenClawEnabled)
+	require.False(t, cfg.LLM.ReportEnabled)
+}
+
+func TestOpenAIProviderUsesOfficialDefaultBaseURL(t *testing.T) {
+	t.Setenv("GAI_LLM_PROVIDER", " OpenAI ")
+	t.Setenv("GAI_LLM_API_KEY", "server-only-key")
+	t.Setenv("GAI_LLM_MODEL", "gpt-model")
+	t.Setenv("GAI_LLM_BASE_URL", "")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, LLMProviderOpenAI, cfg.LLM.Provider)
+	require.Equal(t, "https://api.openai.com/v1", cfg.LLM.BaseURL)
+}
+
+func TestOpenAIProviderAllowsBaseURLOverride(t *testing.T) {
+	t.Setenv("GAI_LLM_PROVIDER", "openai")
+	t.Setenv("GAI_LLM_API_KEY", "server-only-key")
+	t.Setenv("GAI_LLM_MODEL", "gateway-model")
+	t.Setenv("GAI_LLM_BASE_URL", "https://gateway.example/openai/v1/")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, "https://gateway.example/openai/v1", cfg.LLM.BaseURL)
+}
+
+func TestDeepSeekProviderUsesOfficialDefaultBaseURL(t *testing.T) {
+	t.Setenv("GAI_LLM_PROVIDER", "deepseek")
+	t.Setenv("GAI_LLM_API_KEY", "server-only-key")
+	t.Setenv("GAI_LLM_MODEL", "deepseek-model")
+	t.Setenv("GAI_LLM_BASE_URL", "")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, "https://api.deepseek.com", cfg.LLM.BaseURL)
+}
+
+func TestCustomLLMProviderPreservesBaseURLAndModel(t *testing.T) {
+	t.Setenv("GAI_LLM_PROVIDER", "custom")
+	t.Setenv("GAI_LLM_BASE_URL", "http://localhost:11434/v1/")
+	t.Setenv("GAI_LLM_API_KEY", "local-key")
+	t.Setenv("GAI_LLM_MODEL", "custom-model")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, "http://localhost:11434/v1", cfg.LLM.BaseURL)
+	require.Equal(t, "custom-model", cfg.LLM.Model)
+}
+
+func TestCustomLLMProviderRequiresBaseURL(t *testing.T) {
+	t.Setenv("GAI_LLM_PROVIDER", "custom")
+	t.Setenv("GAI_LLM_BASE_URL", "")
+	t.Setenv("GAI_LLM_API_KEY", "local-key")
+	t.Setenv("GAI_LLM_MODEL", "custom-model")
+	_, err := Load()
+	require.ErrorContains(t, err, "GAI_LLM_BASE_URL")
+}
+
+func TestRealLLMProviderRejectsMockDefaultModel(t *testing.T) {
+	t.Setenv("GAI_LLM_PROVIDER", "openai")
+	t.Setenv("GAI_LLM_API_KEY", "server-only-key")
+	t.Setenv("GAI_LLM_MODEL", "mock-business-v1")
+	_, err := Load()
+	require.ErrorContains(t, err, "GAI_LLM_MODEL")
 }
 
 func TestKafkaEnabledRequiresTenantAndProducer(t *testing.T) {

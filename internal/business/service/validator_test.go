@@ -22,3 +22,12 @@ func TestValidatorRejectsHallucinationAndDirectAction(t *testing.T) {
 		t.Fatalf("result=%#v errors=%v", result, errors)
 	}
 }
+
+func TestValidatorDoesNotTreatAgentContextAsDeterministicEvidence(t *testing.T) {
+	input := json.RawMessage(`{"campaign":{"campaign_id":"meta","roas_d7":"1.0"},"agent_context":{"creative-agent":{"claimed_roas":"9.9"}}}`)
+	output := json.RawMessage(`{"status":"WARNING","summary":"risk","findings":[{"type":"roas","rule_code":"X","severity":"MEDIUM","conclusion":"claim","description":"claim","evidence":[{"metric":"claimed_roas","actual":"9.9"}],"possible_causes":[],"impact":"risk","confidence":0.7}],"recommendations":[]}`)
+	result, errors := NewValidator().Validate(output, input)
+	if result != nil || len(errors) == 0 {
+		t.Fatalf("agent context must not become deterministic evidence: result=%#v errors=%v", result, errors)
+	}
+}

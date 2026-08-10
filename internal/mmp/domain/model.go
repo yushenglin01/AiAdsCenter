@@ -3,13 +3,17 @@ package domain
 import "time"
 
 const (
-	ProviderAppsFlyer  = "APPSFLYER"
-	ProviderAdjust     = "ADJUST"
-	ConnectionActive   = "ACTIVE"
-	ConnectionDisabled = "DISABLED"
-	SyncProcessing     = "PROCESSING"
-	SyncSucceeded      = "SUCCEEDED"
-	SyncFailed         = "FAILED"
+	ProviderAppsFlyer   = "APPSFLYER"
+	ProviderAdjust      = "ADJUST"
+	ConnectionActive    = "ACTIVE"
+	ConnectionDisabled  = "DISABLED"
+	HealthReady         = "READY"
+	HealthUnverified    = "UNVERIFIED"
+	HealthNotConfigured = "NOT_CONFIGURED"
+	HealthDisabled      = "DISABLED"
+	SyncProcessing      = "PROCESSING"
+	SyncSucceeded       = "SUCCEEDED"
+	SyncFailed          = "FAILED"
 )
 
 type Connection struct {
