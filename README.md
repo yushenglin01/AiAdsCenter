@@ -12,7 +12,7 @@ AdNova（星曜智投）是面向海外游戏投放团队的广告经营智能�
 
 当前仓库完成 **阶段十四：自动化 Research 定时发现**。ADMIN/MANAGER 可按租户和游戏/计划配置公开网页研究任务；Worker 使用数据库租约执行，所有新来源仍进入人工核验队列。
 
-当前项目版本：**1.4.0**；最近迭代：**DEV-20260810-001**。版本历史见 [迭代索引](docs/iterations/README.md) 和 [变更日志](docs/releases/CHANGELOG.md)。
+当前项目版本：**1.4.1**；最近迭代：**DEV-20260810-002**。版本历史见 [迭代索引](docs/iterations/README.md) 和 [变更日志](docs/releases/CHANGELOG.md)。
 
 ## 核心边界
 
@@ -171,11 +171,39 @@ Compose 不内置 Kafka Broker。消费端使用 MySQL Inbox、手动 Offset 提
 
 ## Mock LLM 与真实 LLM
 
-默认 `LLM_PROVIDER=mock`，无需外部模型即可完整演示。切换真实 OpenAI-compatible 服务时，必须同时设置 `LLM_PROVIDER=openai-compatible`、`LLM_BASE_URL`、`LLM_API_KEY` 与 `LLM_MODEL`。客户端支持结构化 JSON、超时、有限重试、Token 用量归一化和安全错误分类；不会记录 API Key 或完整敏感 Prompt。
+默认 `LLM_PROVIDER=mock`，无需外部模型即可完整演示。真实模型统一使用 OpenAI-compatible Chat Completions 协议，内置 `openai`、`deepseek`，也支持 `openai-compatible` 或 `custom` 自定义服务。`openai` 与 `deepseek` 可省略 `LLM_BASE_URL` 使用官方默认地址；所有真实 Provider 都可显式覆盖 BaseURL，并必须配置 API Key 与模型名：
+
+```bash
+# OpenAI
+LLM_PROVIDER=openai
+LLM_API_KEY=...
+LLM_MODEL=<openai-model-id>
+
+# DeepSeek
+LLM_PROVIDER=deepseek
+LLM_API_KEY=...
+LLM_MODEL=<deepseek-model-id>
+
+# 其他兼容服务或私有网关
+LLM_PROVIDER=custom
+LLM_BASE_URL=https://your-compatible-endpoint.example/v1
+LLM_API_KEY=...
+LLM_MODEL=<model-id>
+
+# Agent 级开关（真实 Provider 下生效）
+LLM_RESEARCH_ENABLED=true
+LLM_CREATIVE_ENABLED=true
+LLM_OPENCLAW_ENABLED=true
+LLM_REPORT_ENABLED=false
+```
+
+客户端支持结构化 JSON、超时、有限重试、Token 用量归一化和安全错误分类；不会记录 API Key 或完整敏感 Prompt。自定义 BaseURL 必须是无内嵌凭证、查询参数和 Fragment 的绝对 HTTP(S) 地址。
+
+Research、Creative 和 OpenClaw 默认在配置真实 Provider 后启用 LLM 增强；Report 的摘要润色默认关闭，需显式开启。Research 只能归纳人工核验的来源，Creative 只能解释确定性素材发现，Report 只能改写摘要且必须保持来源摘要哈希一致；任何模型失败或语义校验失败都会回退到确定性结果。Data 与 Attribution Agent 始终保持确定性，不调用 LLM。当前 Creative 输入只有结构化表现数据，不宣称具备图片或视频理解能力。
 
 ## OpenClaw / Hermes
 
-OpenClaw 内部命令入口为 `POST /api/v1/openclaw/commands`，可启动完整分析工作流。Hermes/外部 OpenClaw HTTP 与消息推送仍保持适配边界；当前没有对应环境，因此 Agent 目录会明确标记为未配置。
+OpenClaw 内部命令入口为 `POST /api/v1/openclaw/commands`。结构化 `intent/input` 始终可用；配置真实 LLM 后，也可提交自然语言 `message`。模型只负责解析五种白名单内部命令，启动分析必须先返回 `NEEDS_CONFIRMATION`，用户以同一消息加 `confirm: true` 后才会执行。Hermes/外部 OpenClaw HTTP 与消息推送仍保持适配边界；当前没有对应环境，因此 Agent 目录会明确标记为未配置。
 
 ## 阶段十四完成情况
 

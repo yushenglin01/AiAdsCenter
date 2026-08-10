@@ -9,7 +9,7 @@ import { configureMMPConnection, listMMPConnections, listMMPSyncRuns, syncMMPCon
 import type { MMPProvider } from '@/api/mmp'
 import { useAuthStore } from '@/stores/auth'
 import type { Game, ImportJob, MMPConnection, MMPSyncRun } from '@/types/catalog'
-import { connectionHint, validateSyncRange } from '@/utils/mmp'
+import { canSyncConnection, connectionHealthLabel, connectionHint, validateSyncRange } from '@/utils/mmp'
 
 const auth = useAuthStore()
 const games = ref<Game[]>([])
@@ -55,7 +55,7 @@ function connectionFor(provider: MMPProvider) { return connections.value.find((i
 function providerLabel(provider: MMPProvider) { return provider === 'ADJUST' ? 'Adjust' : 'AppsFlyer' }
 function providerIdentifier(provider: MMPProvider) { return provider === 'ADJUST' ? 'Adjust App Token' : 'AppsFlyer App ID' }
 function maxRange(provider: MMPProvider) { return provider === 'ADJUST' ? 31 : 7 }
-function canSync(provider: MMPProvider) { return connectionFor(provider)?.health === 'READY' && syncingProvider.value === null }
+function canSync(provider: MMPProvider) { return canSyncConnection(connectionFor(provider)) && syncingProvider.value === null }
 
 async function load() {
   loading.value = true
@@ -81,7 +81,7 @@ async function saveConnection(provider: MMPProvider) {
   savingProvider.value = provider; error.value = ''; success.value = ''
   try {
     const saved = await configureMMPConnection(provider, { game_id: gameID.value, external_app_id: externalAppIDs[provider].trim(), status: connectionStatuses[provider] })
-    success.value = `${providerLabel(provider)} 映射已保存；当前状态：${saved.health}。`
+    success.value = `${providerLabel(provider)} 映射已保存；当前状态：${connectionHealthLabel(saved.health)}。`
     await load()
   } catch (e) { error.value = messageOf(e) } finally { savingProvider.value = null }
 }
@@ -94,7 +94,9 @@ async function startSync(provider: MMPProvider) {
   syncingProvider.value = provider; error.value = ''; success.value = ''
   try {
     const run = await syncMMPConnection(connection.id, syncRange.value[0], syncRange.value[1])
-    success.value = `${providerLabel(provider)} 同步完成：${run.source_rows} 条源记录聚合为 ${run.normalized_rows} 行指标。${run.warning_message || ''}`
+    success.value = run.status === 'PROCESSING'
+      ? `${providerLabel(provider)} 的相同日期同步正在执行，请稍后查看运行记录。`
+      : `${providerLabel(provider)} 同步完成：${run.source_rows} 条源记录聚合为 ${run.normalized_rows} 行指标。${run.warning_message || ''}`
     await load()
   } catch (e) { error.value = messageOf(e); await load() } finally { syncingProvider.value = null }
 }
@@ -108,7 +110,7 @@ onMounted(() => { syncRange.value = [localDate(-2), localDate(-1)]; void load() 
   <el-alert v-if="success" :title="success" type="success" show-icon closable @close="success = ''" />
 
   <section class="connector-panel" aria-labelledby="appsflyer-heading">
-    <div class="connector-heading"><div><span class="eyebrow">READ-ONLY CONNECTOR</span><h3 id="appsflyer-heading">AppsFlyer</h3><p>{{ appsFlyerHint }}</p></div><el-tag :type="tagType(appsFlyerConnection?.health || 'NOT_CONFIGURED')">{{ appsFlyerConnection?.health || 'NOT_CONFIGURED' }}</el-tag></div>
+    <div class="connector-heading"><div><span class="eyebrow">READ-ONLY CONNECTOR</span><h3 id="appsflyer-heading">AppsFlyer</h3><p>{{ appsFlyerHint }}</p></div><el-tag :type="tagType(appsFlyerConnection?.health || 'NOT_CONFIGURED')">{{ connectionHealthLabel(appsFlyerConnection?.health || 'NOT_CONFIGURED') }}</el-tag></div>
     <div class="connector-fields">
       <label>游戏<el-select v-model="gameID" aria-label="AppsFlyer 游戏"><el-option v-for="game in games" :key="game.id" :label="game.name" :value="game.id" /></el-select></label>
       <label>AppsFlyer App ID<el-input v-model="externalAppIDs.APPSFLYER" :disabled="!canConfigure" placeholder="com.example.game / id123456789" aria-label="AppsFlyer App ID" /></label>
@@ -119,7 +121,7 @@ onMounted(() => { syncRange.value = [localDate(-2), localDate(-1)]; void load() 
   </section>
 
   <section class="connector-panel" aria-labelledby="adjust-heading">
-    <div class="connector-heading"><div><span class="eyebrow">READ-ONLY CONNECTOR</span><h3 id="adjust-heading">Adjust</h3><p>{{ adjustHint }}</p></div><el-tag :type="tagType(adjustConnection?.health || 'NOT_CONFIGURED')">{{ adjustConnection?.health || 'NOT_CONFIGURED' }}</el-tag></div>
+    <div class="connector-heading"><div><span class="eyebrow">READ-ONLY CONNECTOR</span><h3 id="adjust-heading">Adjust</h3><p>{{ adjustHint }}</p></div><el-tag :type="tagType(adjustConnection?.health || 'NOT_CONFIGURED')">{{ connectionHealthLabel(adjustConnection?.health || 'NOT_CONFIGURED') }}</el-tag></div>
     <div class="connector-fields">
       <label>游戏<el-select v-model="gameID" aria-label="Adjust 游戏"><el-option v-for="game in games" :key="game.id" :label="game.name" :value="game.id" /></el-select></label>
       <label>Adjust App Token<el-input v-model="externalAppIDs.ADJUST" :disabled="!canConfigure" placeholder="Adjust dashboard app token" aria-label="Adjust App Token" /></label>

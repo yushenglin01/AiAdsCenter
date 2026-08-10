@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "creative-agent-output/1.2.0",
+  "type": "object",
+  "required": ["findings", "calculation_mode", "analysis_capabilities"],
+  "properties": {
+    "findings": {"type": "integer", "minimum": 0},
+    "calculation_mode": {"enum": ["DETERMINISTIC", "DETERMINISTIC_FALLBACK", "HYBRID_DETERMINISTIC_LLM"]},
+    "analysis_capabilities": {"type": "array", "items": {"type": "string"}},
+    "insights": {"type": "array"},
+    "llm": {"type": "object"}
+  }
+}

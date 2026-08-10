@@ -8,6 +8,7 @@ import (
 	"time"
 
 	agentdomain "github.com/example/adnova/internal/agent/domain"
+	"github.com/example/adnova/internal/agent/intelligence"
 	agenttools "github.com/example/adnova/internal/agent/tools"
 	attributiondomain "github.com/example/adnova/internal/attribution/domain"
 	attributionrepo "github.com/example/adnova/internal/attribution/repository"
@@ -45,30 +46,43 @@ type BusinessInput struct {
 	CreativeFindings    []creativedomain.Finding        `json:"creative_findings"`
 	RuleFindings        []rulesdomain.RuleFinding       `json:"rule_findings"`
 	ResearchSources     []researchdomain.Evidence       `json:"research_sources"`
+	AgentContext        map[string]json.RawMessage      `json:"agent_context,omitempty"`
 	Forecast            map[string]any                  `json:"forecast"`
 	Constraints         []string                        `json:"constraints"`
 }
 
 type Service struct {
-	repo        *repository.Repository
-	metrics     *metricsservice.Service
-	rules       *rulesrepo.Repository
-	attr        *attributionrepo.Repository
-	creative    *creativeanalysisrepo.Repository
-	research    *researchrepo.Repository
-	registry    *agenttools.Registry
-	client      llm.Client
-	validator   *Validator
-	auditor     auditservice.Recorder
-	prompts     PromptSet
-	spec        agentdomain.AgentSpec
-	enqueuer    taskqueue.Enqueuer
-	taskTimeout time.Duration
+	repo           *repository.Repository
+	metrics        *metricsservice.Service
+	rules          *rulesrepo.Repository
+	attr           *attributionrepo.Repository
+	creative       *creativeanalysisrepo.Repository
+	research       *researchrepo.Repository
+	registry       *agenttools.Registry
+	client         llm.Client
+	validator      *Validator
+	auditor        auditservice.Recorder
+	prompts        PromptSet
+	spec           agentdomain.AgentSpec
+	enqueuer       taskqueue.Enqueuer
+	taskTimeout    time.Duration
+	reportPolisher reportservice.Polisher
 }
 
-func New(repo *repository.Repository, metrics *metricsservice.Service, rules *rulesrepo.Repository, attr *attributionrepo.Repository, creative *creativeanalysisrepo.Repository, research *researchrepo.Repository, client llm.Client, prompts PromptSet, model string, enqueuer taskqueue.Enqueuer, taskTimeout time.Duration, auditor auditservice.Recorder) (*Service, error) {
+type Option func(*Service)
+
+func WithReportPolisher(runtime *intelligence.Runtime, contract intelligence.Contract) Option {
+	return func(service *Service) {
+		service.reportPolisher = reportservice.NewLLMPolisher(runtime, contract)
+	}
+}
+
+func New(repo *repository.Repository, metrics *metricsservice.Service, rules *rulesrepo.Repository, attr *attributionrepo.Repository, creative *creativeanalysisrepo.Repository, research *researchrepo.Repository, client llm.Client, prompts PromptSet, model string, enqueuer taskqueue.Enqueuer, taskTimeout time.Duration, auditor auditservice.Recorder, options ...Option) (*Service, error) {
 	s := &Service{repo: repo, metrics: metrics, rules: rules, attr: attr, creative: creative, research: research, registry: agenttools.NewRegistry(), client: client, validator: NewValidator(), auditor: auditor, prompts: prompts, enqueuer: enqueuer, taskTimeout: taskTimeout}
-	s.spec = agentdomain.AgentSpec{Name: "business-agent", Version: "1.1.0", Description: "海外游戏广告经营风险分析", ExecutionMode: "ASYNCHRONOUS_LLM", Model: model, SystemPrompt: prompts.BusinessSystem, Tools: []string{"get_campaign_metrics", "get_business_benchmark", "get_attribution_anomalies", "get_creative_findings", "get_verified_research_sources", "forecast_ltv", "create_recommendation", "create_approval_request"}, Permissions: []string{"READ_METRICS", "READ_ANALYSIS", "READ_VERIFIED_RESEARCH", "CREATE_RECOMMENDATION", "CREATE_APPROVAL_REQUEST"}, MaxSteps: 10, Timeout: 30 * time.Second, InputSchema: "business-agent-input/1.1.0", OutputSchema: prompts.OutputSchema}
+	for _, option := range options {
+		option(s)
+	}
+	s.spec = agentdomain.AgentSpec{Name: "business-agent", Version: "1.2.0", Description: "海外游戏广告经营风险分析与受约束的多 Agent 上下文综合", ExecutionMode: "ASYNCHRONOUS_LLM", Model: model, SystemPrompt: prompts.BusinessSystem, Tools: []string{"get_campaign_metrics", "get_business_benchmark", "get_attribution_anomalies", "get_creative_findings", "get_verified_research_sources", "forecast_ltv", "create_recommendation", "create_approval_request"}, Permissions: []string{"READ_METRICS", "READ_ANALYSIS", "READ_VERIFIED_RESEARCH", "CREATE_RECOMMENDATION", "CREATE_APPROVAL_REQUEST"}, MaxSteps: 10, Timeout: 30 * time.Second, InputSchema: "business-agent-input/1.2.0", OutputSchema: prompts.OutputSchema}
 	if err := s.registerTools(); err != nil {
 		return nil, err
 	}
@@ -186,7 +200,7 @@ func (s *Service) ProcessQueued(ctx context.Context, payload taskqueue.BusinessA
 	if err := s.repo.DeleteGeneratedResults(ctx, payload.TenantID, payload.TaskID); err != nil {
 		return err
 	}
-	businessInput, err := s.collectInput(ctx, payload.TenantID, payload.CreatedBy, payload.TaskID, payload.GameID, payload.CampaignID, payload.AnalysisDate)
+	businessInput, err := s.collectInput(ctx, payload.TenantID, payload.CreatedBy, payload.TaskID, task.WorkflowID, payload.GameID, payload.CampaignID, payload.AnalysisDate)
 	if err != nil {
 		return fmt.Errorf("collect business context: %w", err)
 	}
@@ -201,7 +215,7 @@ func (s *Service) ProcessQueued(ctx context.Context, payload taskqueue.BusinessA
 	if validated == nil {
 		return s.repo.TransitionTask(ctx, payload.TenantID, payload.TaskID, "RUNNING", "MANUAL_REVIEW", "VALIDATION_FAILED", "model output failed validation twice", raw)
 	}
-	report := reportservice.Compose(reportservice.Input{TenantID: payload.TenantID, TaskID: payload.TaskID, WorkflowID: task.WorkflowID, GameID: payload.GameID, CampaignID: payload.CampaignID, Result: *validated, Research: businessInput.ResearchSources, AnalysisDate: payload.AnalysisDate})
+	report := reportservice.ComposeWithPolisher(ctx, reportservice.Input{TenantID: payload.TenantID, TaskID: payload.TaskID, WorkflowID: task.WorkflowID, GameID: payload.GameID, CampaignID: payload.CampaignID, Result: *validated, Research: businessInput.ResearchSources, AnalysisDate: payload.AnalysisDate, TraceID: payload.TraceID}, s.reportPolisher)
 	if err := s.repo.CreateReport(ctx, report); err != nil {
 		return fmt.Errorf("create analysis report: %w", err)
 	}

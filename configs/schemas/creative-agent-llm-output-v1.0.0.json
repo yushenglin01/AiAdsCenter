@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "creative-agent-llm-output/1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["insights"],
+  "properties": {
+    "insights": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["finding_id", "interpretation", "possible_causes", "next_checks"],
+        "properties": {
+          "finding_id": {"type": "string"},
+          "interpretation": {"type": "string", "minLength": 1, "maxLength": 1000},
+          "possible_causes": {"type": "array", "maxItems": 5, "items": {"type": "string", "maxLength": 300}},
+          "next_checks": {"type": "array", "maxItems": 5, "items": {"type": "string", "maxLength": 300}}
+        }
+      }
+    }
+  }
+}

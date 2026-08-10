@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -15,7 +16,7 @@ import (
 
 const (
 	GeneratorAgent   = "report-agent"
-	GeneratorVersion = "1.1.0"
+	GeneratorVersion = "1.2.0"
 )
 
 type Input struct {
@@ -27,24 +28,41 @@ type Input struct {
 	Result       businessdomain.Result
 	Research     []researchdomain.Evidence
 	AnalysisDate string
+	TraceID      string
 }
 
 func Compose(input Input) *businessdomain.AnalysisReport {
-	sourcePayload, _ := json.Marshal(map[string]any{
-		"task_id": input.TaskID, "workflow_id": input.WorkflowID, "game_id": input.GameID,
-		"campaign_id": input.CampaignID, "analysis_date": input.AnalysisDate,
-		"result": input.Result, "research": input.Research,
-	})
+	return ComposeWithPolisher(context.Background(), input, nil)
+}
+
+func ComposeWithPolisher(ctx context.Context, input Input, polisher Polisher) *businessdomain.AnalysisReport {
+	sourcePayload := sourcePayload(input)
 	digest := sha256.Sum256(sourcePayload)
+	digestText := hex.EncodeToString(digest[:])
+	summary := input.Result.Summary
+	enhancement := map[string]any{"status": "DISABLED", "fact_source": "DETERMINISTIC"}
+	if polisher != nil && polisher.Enabled() {
+		polished, err := polisher.Polish(ctx, input, digestText)
+		if err == nil {
+			summary = polished.Summary
+			enhancement = map[string]any{
+				"status": "APPLIED", "fact_source": "DETERMINISTIC", "provider": polished.Provider,
+				"model": polished.Model, "prompt_version": polished.PromptVersion, "schema_version": polished.SchemaVersion,
+			}
+		} else {
+			enhancement = map[string]any{"status": "FALLBACK", "fact_source": "DETERMINISTIC", "error_category": FailureCategory(err)}
+		}
+	}
 	generatedAt := time.Now().UTC()
 	provenance, _ := json.Marshal(map[string]any{
 		"workflow_id": input.WorkflowID, "task_id": input.TaskID,
 		"generator_agent": GeneratorAgent, "generator_version": GeneratorVersion,
 		"research_source_ids": sourceIDs(input.Research), "source_digest_algorithm": "SHA-256",
+		"summary_enhancement": enhancement,
 	})
 
 	var body strings.Builder
-	fmt.Fprintf(&body, "# 经营分析报告\n\n%s\n\n## 经营发现\n\n", input.Result.Summary)
+	fmt.Fprintf(&body, "# 经营分析报告\n\n%s\n\n## 经营发现\n\n", summary)
 	if len(input.Result.Findings) == 0 {
 		body.WriteString("无经营风险发现。\n")
 	}
@@ -69,10 +87,19 @@ func Compose(input Input) *businessdomain.AnalysisReport {
 
 	return &businessdomain.AnalysisReport{
 		ID: uuid.NewString(), TenantID: input.TenantID, TaskID: input.TaskID,
-		Title: "经营分析报告", Summary: input.Result.Summary, ContentMarkdown: body.String(), Status: "READY",
+		Title: "经营分析报告", Summary: summary, ContentMarkdown: body.String(), Status: "READY",
 		GeneratorAgent: GeneratorAgent, GeneratorVersion: GeneratorVersion,
-		SourceDigest: hex.EncodeToString(digest[:]), ProvenanceJSON: provenance, GeneratedAt: &generatedAt,
+		SourceDigest: digestText, ProvenanceJSON: provenance, GeneratedAt: &generatedAt,
 	}
+}
+
+func sourcePayload(input Input) json.RawMessage {
+	payload, _ := json.Marshal(map[string]any{
+		"task_id": input.TaskID, "workflow_id": input.WorkflowID, "game_id": input.GameID,
+		"campaign_id": input.CampaignID, "analysis_date": input.AnalysisDate,
+		"result": input.Result, "research": input.Research,
+	})
+	return payload
 }
 
 func sourceIDs(rows []researchdomain.Evidence) []string {

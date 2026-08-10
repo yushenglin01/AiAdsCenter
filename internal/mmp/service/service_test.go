@@ -238,8 +238,20 @@ func TestConfigureAdjustUsesIndependentProviderConnection(t *testing.T) {
 	view, err := svc.ConfigureAdjust(context.Background(), ConfigureInput{TenantID: "tenant", UserID: "user", GameID: "game", ExternalAppID: "adjust-app-token"})
 	require.NoError(t, err)
 	require.Equal(t, mmpdomain.ProviderAdjust, view.Provider)
-	require.Equal(t, "READY", view.Health)
+	require.Equal(t, mmpdomain.HealthUnverified, view.Health)
 	require.True(t, view.CredentialConfigured)
+}
+
+func TestConnectionHealthBecomesReadyOnlyAfterSuccessfulSync(t *testing.T) {
+	repo := newMemoryRepo()
+	lastSync := time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC)
+	repo.connections["connection"] = &mmpdomain.Connection{ID: "connection", TenantID: "tenant", GameID: "game", Provider: mmpdomain.ProviderAppsFlyer, ExternalAppID: "com.example.game", Status: mmpdomain.ConnectionActive, LastSyncAt: &lastSync}
+	svc := newService(repo, &fakeFetcher{configured: true}, &fakeImporter{}, nil)
+
+	views, err := svc.ListConnections(context.Background(), "tenant")
+	require.NoError(t, err)
+	require.Len(t, views, 1)
+	require.Equal(t, mmpdomain.HealthReady, views[0].Health)
 }
 
 func TestConfigureAppsFlyerRejectsAppIDChangeAfterSuccessfulSync(t *testing.T) {

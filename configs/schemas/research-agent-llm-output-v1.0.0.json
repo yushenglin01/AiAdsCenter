@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "research-agent-llm-output/1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "signals"],
+  "properties": {
+    "summary": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "signals": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "description", "source_ids", "confidence"],
+        "properties": {
+          "title": {"type": "string", "minLength": 1, "maxLength": 200},
+          "description": {"type": "string", "minLength": 1, "maxLength": 1000},
+          "source_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      }
+    }
+  }
+}

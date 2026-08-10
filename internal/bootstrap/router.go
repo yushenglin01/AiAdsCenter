@@ -115,12 +115,16 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	rulesHandler := ruleshandler.New(rulesService)
 	attributionHandler := attributionhandler.New(attributionService)
 	creativeAnalysisHandler := creativeanalysishandler.New(creativeAnalysisService)
-	businessService, err := NewBusinessService(cfg, db, enqueuer)
+	agentIntelligence, err := NewAgentIntelligence(cfg, db)
+	if err != nil {
+		panic(err)
+	}
+	businessService, err := NewBusinessService(cfg, db, enqueuer, agentIntelligence)
 	if err != nil {
 		panic(err)
 	}
 	businessHandler := businesshandler.New(businessService)
-	agentRegistry, err := NewAgentRegistry(metricsService, rulesService, attributionService, creativeAnalysisService, businessService, dataQualityService, researchService)
+	agentRegistry, err := NewAgentRegistry(metricsService, rulesService, attributionService, creativeAnalysisService, businessService, dataQualityService, researchService, agentIntelligence)
 	if err != nil {
 		panic(err)
 	}
@@ -130,7 +134,8 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	approvalHandler := approvalhandler.New(approvalService)
 	workflowService := workflowservice.New(workflowrepo.New(db), agentRegistry, businessService, notificationService)
 	agentHandler := agenthandler.New(agentRegistry, workflowService)
-	workflowHandler := workflowhandler.New(workflowService, openclawservice.New(workflowService, approvalService, notificationService))
+	openClawParser := openclawservice.NewLLMParser(agentIntelligence.Runtime, agentIntelligence.Contracts["openclaw-agent"])
+	workflowHandler := workflowhandler.New(workflowService, openclawservice.New(workflowService, approvalService, notificationService, openClawParser))
 	mmpHandler := mmphandler.New(NewMMPService(cfg, db))
 	auditHandler := audithandler.New(auditService)
 	recommendationHandler := recommendationhandler.New(recommendationservice.New(recommendationrepo.New(db)))

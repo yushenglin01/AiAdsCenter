@@ -356,11 +356,13 @@ func syncHeartbeatError(providerName string, err error) error {
 }
 
 func (s *Service) connectionView(row mmpdomain.Connection) mmpdomain.ConnectionView {
-	health := "READY"
+	health := mmpdomain.HealthUnverified
 	if row.Status == mmpdomain.ConnectionDisabled {
-		health = "DISABLED"
+		health = mmpdomain.HealthDisabled
 	} else if !s.fetcherConfigured(row.Provider) {
-		health = "NOT_CONFIGURED"
+		health = mmpdomain.HealthNotConfigured
+	} else if row.LastSyncAt != nil {
+		health = mmpdomain.HealthReady
 	}
 	return mmpdomain.ConnectionView{Connection: row, CredentialConfigured: s.fetcherConfigured(row.Provider), Health: health}
 }

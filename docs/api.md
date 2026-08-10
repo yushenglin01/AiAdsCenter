@@ -1,4 +1,4 @@
-# 阶段十四 API（项目 1.4.0）
+# 阶段十四 API（项目 1.4.1）
 
 所有业务 API 使用 `/api/v1` 前缀，响应格式为 `{ code, message, data, request_id }`。
 
@@ -217,7 +217,18 @@ OpenClaw 命令请求：
 }
 ```
 
-RUN_FULL_ANALYSIS 返回 HTTP 202；其他 OpenClaw 查询/内部状态指令返回 HTTP 200。支持的 intent 为 `RUN_FULL_ANALYSIS`、`GET_WORKFLOW_STATUS`、`LIST_PENDING_APPROVALS`、`LIST_NOTIFICATIONS`、`MARK_NOTIFICATION_READ`。同一租户、工作流类型、游戏、计划和分析日期组成工作流幂等键；重复命令返回原 workflow_id。Research 没有已核验来源时以 `NO_VERIFIED_SOURCES` 成功完成且不生成外部事实；Business Agent 提交后工作流等待异步任务，高风险建议生成后为 WAITING_APPROVAL，全部审批完成后在下一次详情读取时收口为 COMPLETED。
+配置真实 LLM 且启用 `LLM_OPENCLAW_ENABLED` 后，也可提交自然语言：
+
+```json
+{
+  "message": "分析游戏 30000000-0000-4000-8000-000000000001 的计划 50000000-0000-4000-8000-000000000001，分析日期为 2026-08-04",
+  "confirm": false
+}
+```
+
+模型仅把消息解析为下列白名单 intent，不直接调用业务工具。启动分析第一次返回 `NEEDS_CONFIRMATION` 且 `executed=false`；用户确认解析结果后，用同一 `message` 和 `"confirm": true` 再次提交才会执行。查询类命令不要求确认。LLM 解析要求显式 UUID、至少 0.8 置信度、无缺失字段，并在响应中返回 Provider、模型、Prompt 和 Schema 版本；解析或校验失败不会猜测执行。结构化 `intent/input` 路径不依赖 LLM，保持向后兼容。
+
+实际执行 RUN_FULL_ANALYSIS 返回 HTTP 202；确认提示以及其他 OpenClaw 查询/内部状态指令返回 HTTP 200。支持的 intent 为 `RUN_FULL_ANALYSIS`、`GET_WORKFLOW_STATUS`、`LIST_PENDING_APPROVALS`、`LIST_NOTIFICATIONS`、`MARK_NOTIFICATION_READ`。同一租户、工作流类型、游戏、计划和分析日期组成工作流幂等键；重复命令返回原 workflow_id。Research 没有已核验来源时以 `NO_VERIFIED_SOURCES` 成功完成且不生成外部事实；Business Agent 提交后工作流等待异步任务，高风险建议生成后为 WAITING_APPROVAL，全部审批完成后在下一次详情读取时收口为 COMPLETED。
 
 各 intent 的 `input`：
 
@@ -332,4 +343,6 @@ AppsFlyer 连接配置示例：
 
 Adjust 使用同一请求结构，其中 `external_app_id` 填写 Adjust App Token。同步请求为 `{ "from": "2026-08-01", "to": "2026-08-03" }`。AppsFlyer 连接器并行读取 Raw Data Pull API v5 的 `installs_report` 和 `in_app_events_report`；Adjust 连接器读取 Report Service API，并使用配置的 activation、payer、revenue 指标 slug。两者都按 UTC 日期和 USD 确定性聚合；campaign_id 必须能匹配当前租户的广告计划。相同连接和日期范围重复提交返回已有成功运行，成功导入会事务性替换同来源、游戏、日期范围的 MMP 指标以吸收延迟归因修正。
 
-自动拉取由常驻 Worker 执行。设置 `GAI_MMP_AUTO_SYNC_ENABLED=true`、`GAI_MMP_AUTO_SYNC_INTERVAL=1h` 与 `GAI_MMP_AUTO_SYNC_LOOKBACK_DAYS=3` 后，Worker 启动时立即执行一次，之后按间隔扫描所有租户的 ACTIVE/READY 连接；同一连接和滚动窗口命中同步幂等键时不会再次请求上游，失败连接会在下一轮重试。实际窗口会自动限制在 Provider 的最大范围内。API Token 和 Adjust 事件指标映射只从服务端环境变量读取。
+连接响应的 `health` 使用四态语义：`NOT_CONFIGURED` 表示服务端凭证或 Adjust 指标映射缺失，`UNVERIFIED` 表示配置齐全但尚无成功同步，`READY` 表示当前映射至少成功完成过一次拉取和导入，`DISABLED` 表示已停用。`credential_configured` 只暴露布尔值；Token 不进入响应。首次同步允许从 `UNVERIFIED` 发起，成功后写入 `last_sync_at` 并变为 `READY`。
+
+自动拉取由常驻 Worker 执行。设置 `GAI_MMP_AUTO_SYNC_ENABLED=true`、`GAI_MMP_AUTO_SYNC_INTERVAL=1h` 与 `GAI_MMP_AUTO_SYNC_LOOKBACK_DAYS=3` 后，Worker 启动时立即执行一次，之后按间隔扫描所有租户中 ACTIVE 且服务端配置齐全的连接，包括尚待首次验证的 `UNVERIFIED` 连接；同一连接和滚动窗口命中同步幂等键时不会再次请求上游，失败连接会在下一轮重试。实际窗口会自动限制在 Provider 的最大范围内。API Token 和 Adjust 事件指标映射只从服务端环境变量读取。

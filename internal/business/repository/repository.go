@@ -23,6 +23,11 @@ type TaskDetails struct {
 	Report          *domain.AnalysisReport         `json:"report,omitempty"`
 }
 
+type workflowStepOutput struct {
+	AgentName string          `gorm:"column:agent_name"`
+	Output    json.RawMessage `gorm:"column:output_json"`
+}
+
 func New(db *gorm.DB) *Repository { return &Repository{db: db} }
 
 func (r *Repository) FindTaskByIdempotency(ctx context.Context, tenantID, key string) (*agentdomain.AgentTask, error) {
@@ -170,6 +175,27 @@ func (r *Repository) CreateAttempt(ctx context.Context, row *agentdomain.AgentTa
 
 func (r *Repository) CreateUsage(ctx context.Context, row *agentdomain.ModelUsageRecord) error {
 	return r.db.WithContext(ctx).Create(row).Error
+}
+
+func (r *Repository) WorkflowAgentOutputs(ctx context.Context, tenantID, workflowID string, agentNames []string) (map[string]json.RawMessage, error) {
+	result := map[string]json.RawMessage{}
+	if workflowID == "" || len(agentNames) == 0 {
+		return result, nil
+	}
+	var rows []workflowStepOutput
+	err := r.db.WithContext(ctx).Table("workflow_steps").
+		Select("agent_name, output_json").
+		Where("tenant_id = ? AND workflow_id = ? AND agent_name IN ? AND status IN ?", tenantID, workflowID, agentNames, []string{"SUCCEEDED", "SKIPPED"}).
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		if len(row.Output) > 0 && json.Valid(row.Output) {
+			result[row.AgentName] = append(json.RawMessage(nil), row.Output...)
+		}
+	}
+	return result, nil
 }
 
 func (r *Repository) CreateFinding(ctx context.Context, row *domain.BusinessFinding) error {

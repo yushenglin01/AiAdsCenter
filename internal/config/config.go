@@ -66,14 +66,26 @@ type DemoConfig struct {
 }
 
 type LLMConfig struct {
-	Provider  string
-	BaseURL   string
-	APIKey    string
-	Model     string
-	Timeout   time.Duration
-	PromptDir string
-	SchemaDir string
+	Provider        string
+	BaseURL         string
+	APIKey          string
+	Model           string
+	Timeout         time.Duration
+	PromptDir       string
+	SchemaDir       string
+	ResearchEnabled bool
+	CreativeEnabled bool
+	OpenClawEnabled bool
+	ReportEnabled   bool
 }
+
+const (
+	LLMProviderMock             = "mock"
+	LLMProviderOpenAI           = "openai"
+	LLMProviderDeepSeek         = "deepseek"
+	LLMProviderOpenAICompatible = "openai-compatible"
+	LLMProviderCustom           = "custom"
+)
 
 type QueueConfig struct {
 	Name             string
@@ -193,6 +205,10 @@ func Load() (Config, error) {
 		"llm.timeout":                        "30s",
 		"llm.prompt_dir":                     "configs/prompts",
 		"llm.schema_dir":                     "configs/schemas",
+		"llm.research_enabled":               true,
+		"llm.creative_enabled":               true,
+		"llm.openclaw_enabled":               true,
+		"llm.report_enabled":                 false,
 		"queue.name":                         "business-analysis",
 		"queue.concurrency":                  4,
 		"queue.max_retry":                    3,
@@ -280,8 +296,16 @@ func Load() (Config, error) {
 		},
 		Tenant: TenantConfig{DefaultID: v.GetString("tenant.default_id")},
 		Demo:   DemoConfig{Seed: v.GetBool("demo.seed")},
-		LLM:    LLMConfig{Provider: v.GetString("llm.provider"), BaseURL: v.GetString("llm.base_url"), APIKey: v.GetString("llm.api_key"), Model: v.GetString("llm.model"), Timeout: v.GetDuration("llm.timeout"), PromptDir: v.GetString("llm.prompt_dir"), SchemaDir: v.GetString("llm.schema_dir")},
-		Queue:  QueueConfig{Name: v.GetString("queue.name"), Concurrency: v.GetInt("queue.concurrency"), MaxRetry: v.GetInt("queue.max_retry"), TaskTimeout: v.GetDuration("queue.task_timeout"), Retention: v.GetDuration("queue.retention"), DispatchInterval: v.GetDuration("queue.dispatch_interval"), ShutdownTimeout: v.GetDuration("queue.shutdown_timeout")},
+		LLM: LLMConfig{
+			Provider: strings.ToLower(strings.TrimSpace(v.GetString("llm.provider"))),
+			BaseURL:  strings.TrimRight(strings.TrimSpace(v.GetString("llm.base_url")), "/"),
+			APIKey:   strings.TrimSpace(v.GetString("llm.api_key")),
+			Model:    strings.TrimSpace(v.GetString("llm.model")),
+			Timeout:  v.GetDuration("llm.timeout"), PromptDir: v.GetString("llm.prompt_dir"), SchemaDir: v.GetString("llm.schema_dir"),
+			ResearchEnabled: v.GetBool("llm.research_enabled"), CreativeEnabled: v.GetBool("llm.creative_enabled"),
+			OpenClawEnabled: v.GetBool("llm.openclaw_enabled"), ReportEnabled: v.GetBool("llm.report_enabled"),
+		},
+		Queue: QueueConfig{Name: v.GetString("queue.name"), Concurrency: v.GetInt("queue.concurrency"), MaxRetry: v.GetInt("queue.max_retry"), TaskTimeout: v.GetDuration("queue.task_timeout"), Retention: v.GetDuration("queue.retention"), DispatchInterval: v.GetDuration("queue.dispatch_interval"), ShutdownTimeout: v.GetDuration("queue.shutdown_timeout")},
 		Kafka: KafkaConfig{
 			Enabled: v.GetBool("kafka.enabled"), Brokers: splitNonEmpty(v.GetString("kafka.brokers")), Topics: splitNonEmpty(v.GetString("kafka.topics")),
 			GroupID: strings.TrimSpace(v.GetString("kafka.group_id")), DLQTopic: strings.TrimSpace(v.GetString("kafka.dlq_topic")),
@@ -343,11 +367,31 @@ func Load() (Config, error) {
 	if cfg.Tenant.DefaultID == "" {
 		return Config{}, fmt.Errorf("GAI_TENANT_DEFAULT_ID must not be empty")
 	}
-	if cfg.LLM.Provider != "mock" && cfg.LLM.Provider != "openai-compatible" {
-		return Config{}, fmt.Errorf("GAI_LLM_PROVIDER must be mock or openai-compatible")
+	switch cfg.LLM.Provider {
+	case LLMProviderMock:
+	case LLMProviderOpenAI:
+		if cfg.LLM.BaseURL == "" {
+			cfg.LLM.BaseURL = "https://api.openai.com/v1"
+		}
+	case LLMProviderDeepSeek:
+		if cfg.LLM.BaseURL == "" {
+			cfg.LLM.BaseURL = "https://api.deepseek.com"
+		}
+	case LLMProviderOpenAICompatible, LLMProviderCustom:
+	default:
+		return Config{}, fmt.Errorf("GAI_LLM_PROVIDER must be mock, openai, deepseek, openai-compatible or custom")
 	}
-	if cfg.LLM.Provider == "openai-compatible" && (cfg.LLM.BaseURL == "" || cfg.LLM.APIKey == "" || cfg.LLM.Model == "") {
-		return Config{}, fmt.Errorf("OpenAI-compatible provider requires GAI_LLM_BASE_URL, GAI_LLM_API_KEY and GAI_LLM_MODEL")
+	if cfg.LLM.Provider != LLMProviderMock {
+		if cfg.LLM.APIKey == "" || cfg.LLM.Model == "" || cfg.LLM.Model == "mock-business-v1" {
+			return Config{}, fmt.Errorf("real LLM provider requires GAI_LLM_API_KEY and an explicit GAI_LLM_MODEL")
+		}
+		if cfg.LLM.BaseURL == "" {
+			return Config{}, fmt.Errorf("custom LLM provider requires GAI_LLM_BASE_URL")
+		}
+		parsedLLMURL, err := url.Parse(cfg.LLM.BaseURL)
+		if err != nil || parsedLLMURL.Host == "" || (parsedLLMURL.Scheme != "https" && parsedLLMURL.Scheme != "http") || parsedLLMURL.User != nil || parsedLLMURL.RawQuery != "" || parsedLLMURL.Fragment != "" {
+			return Config{}, fmt.Errorf("GAI_LLM_BASE_URL must be an absolute HTTP(S) URL without credentials, query or fragment")
+		}
 	}
 	if cfg.Queue.Name == "" || cfg.Queue.Concurrency < 1 || cfg.Queue.MaxRetry < 0 || cfg.Queue.TaskTimeout <= 0 || cfg.Queue.DispatchInterval <= 0 {
 		return Config{}, fmt.Errorf("queue configuration is invalid")

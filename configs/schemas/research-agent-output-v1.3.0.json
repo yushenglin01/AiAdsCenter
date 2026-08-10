@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "research-agent-output/1.3.0",
+  "type": "object",
+  "required": ["status", "items", "source_policy", "fabrication_disabled", "reasoning_mode"],
+  "properties": {
+    "status": {"enum": ["VERIFIED_SOURCES_READY", "NO_VERIFIED_SOURCES"]},
+    "source_policy": {"const": "VERIFIED_ONLY"},
+    "fabrication_disabled": {"const": true},
+    "reasoning_mode": {"enum": ["DETERMINISTIC_SOURCE_SELECTION", "DETERMINISTIC_FALLBACK", "VERIFIED_SOURCE_LLM_SYNTHESIS"]},
+    "items": {"type": "array", "items": {"type": "object", "required": ["id", "title", "source_url", "publisher", "published_at", "verified_at"]}},
+    "synthesis": {"type": "object"},
+    "llm": {"type": "object"}
+  }
+}
