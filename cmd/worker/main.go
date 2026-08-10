@@ -89,6 +89,31 @@ func main() {
 		}()
 		logger.Info("MMP auto sync enabled", zap.Duration("interval", cfg.MMPAutoSync.Interval), zap.Int("lookback_days", cfg.MMPAutoSync.LookbackDays))
 	}
+	if cfg.ResearchScheduler.Enabled {
+		researchService := bootstrap.NewResearchService(cfg, db)
+		go func() {
+			run := func() {
+				processed, runErr := researchService.RunDueSchedules(dispatchCtx, cfg.ResearchScheduler.BatchSize, cfg.ResearchScheduler.Lease)
+				if runErr != nil && !errors.Is(runErr, context.Canceled) {
+					logger.Warn("scheduled research completed with failures", zap.Int("processed", processed), zap.Error(runErr))
+				} else if processed > 0 {
+					logger.Info("scheduled research completed", zap.Int("processed", processed))
+				}
+			}
+			run()
+			ticker := time.NewTicker(cfg.ResearchScheduler.PollInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-dispatchCtx.Done():
+					return
+				case <-ticker.C:
+					run()
+				}
+			}
+		}()
+		logger.Info("research scheduler enabled", zap.Duration("poll_interval", cfg.ResearchScheduler.PollInterval), zap.Int("batch_size", cfg.ResearchScheduler.BatchSize), zap.Duration("lease", cfg.ResearchScheduler.Lease))
+	}
 	logger.Info("asynq worker ready", zap.String("queue", cfg.Queue.Name), zap.Int("concurrency", cfg.Queue.Concurrency))
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)

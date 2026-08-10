@@ -60,9 +60,6 @@ import (
 	recommendationrepo "github.com/example/adnova/internal/recommendation/repository"
 	recommendationservice "github.com/example/adnova/internal/recommendation/service"
 	researchhandler "github.com/example/adnova/internal/research/handler"
-	researchrepo "github.com/example/adnova/internal/research/repository"
-	researchservice "github.com/example/adnova/internal/research/service"
-	"github.com/example/adnova/internal/research/websearch"
 	ruleshandler "github.com/example/adnova/internal/rules/handler"
 	rulesrepo "github.com/example/adnova/internal/rules/repository"
 	rulesservice "github.com/example/adnova/internal/rules/service"
@@ -111,8 +108,7 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	attributionService := attributionservice.New(attributionRepository)
 	creativeAnalysisService := creativeanalysisservice.New(creativeAnalysisRepository)
 	dataQualityService := dataqualityservice.New(dataqualityrepo.New(db))
-	webSearchProvider := websearch.NewBrave(websearch.BraveConfig{BaseURL: cfg.WebSearch.BaseURL, APIKey: cfg.WebSearch.APIKey, Timeout: cfg.WebSearch.Timeout, MaxResults: cfg.WebSearch.MaxResults, SafeSearch: cfg.WebSearch.SafeSearch, ImportEnabled: cfg.WebSearch.ImportEnabled})
-	researchService := researchservice.NewWithWebSearch(researchrepo.New(db), webSearchProvider, auditService)
+	researchService := NewResearchService(cfg, db)
 	researchHandler := researchhandler.New(researchService)
 	pipeline := analysisservice.NewPipeline(metricsService, rulesService, attributionService, creativeAnalysisService)
 	metricsHandler := metricshandler.New(metricsService, pipeline)
@@ -197,6 +193,10 @@ func NewRouter(cfg config.Config, logger *zap.Logger, db *gorm.DB, redisClient *
 	authenticated.GET("/research/web-search/capability", researchHandler.WebCapability)
 	authenticated.POST("/research/web-search", appmiddleware.RequireRoles("ADMIN", "MANAGER", "ANALYST"), researchHandler.SearchWeb)
 	authenticated.POST("/research/web-search/import", appmiddleware.RequireRoles("ADMIN", "MANAGER", "ANALYST"), researchHandler.ImportWebResult)
+	authenticated.GET("/research/schedules", researchHandler.ListSchedules)
+	authenticated.POST("/research/schedules", appmiddleware.RequireRoles("ADMIN", "MANAGER"), researchHandler.CreateSchedule)
+	authenticated.PUT("/research/schedules/:id", appmiddleware.RequireRoles("ADMIN", "MANAGER"), researchHandler.UpdateSchedule)
+	authenticated.GET("/research/schedule-runs", researchHandler.ListScheduleRuns)
 	authenticated.POST("/research/sources/:id/verify", appmiddleware.RequireRoles("ADMIN", "MANAGER"), researchHandler.Verify)
 	authenticated.POST("/research/sources/:id/reject", appmiddleware.RequireRoles("ADMIN", "MANAGER"), researchHandler.Reject)
 	authenticated.POST("/analysis/business", appmiddleware.RequireRoles("ADMIN", "MANAGER", "OPERATOR", "ANALYST"), businessHandler.Analyze)

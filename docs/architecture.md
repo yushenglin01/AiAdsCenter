@@ -1,4 +1,4 @@
-# 阶段十三架构（项目 1.3.0）
+# 阶段十四架构（项目 1.4.0）
 
 当前采用模块化单体。`cmd/server` 负责 HTTP、数据库 migration 与队列投递，`cmd/worker` 运行 Asynq 消费者和 Outbox dispatcher，`cmd/ingestion-worker` 可选消费外部 Kafka 数据并触发确定性分析。业务调用方向为 Handler → Service → Repository；Handler 不访问 GORM，Repository 查询显式接收 `tenant_id`。
 
@@ -49,6 +49,8 @@ Dashboard 运营汇总、模型用量和审计查询都以 tenant_id 为首要�
 1.0.0 增加 research_sources 审核状态机。来源登记必须提供无凭证 HTTPS URL、发布方、发布日期与摘要，初始为 PENDING；ADMIN/MANAGER 核验后变为 VERIFIED。Research Agent 只读取当前租户、游戏/计划范围和 analysis_date 之前的 VERIFIED 来源，没有来源时返回 NO_VERIFIED_SOURCES，不生成市场事实。Business Prompt 1.1.0 明确研究来源只能解释背景，不能替代确定性指标证据。
 
 实时研究连接器通过 `internal/research/websearch.Provider` 隔离供应商实现，首个实现使用 Brave Search API。API Key 只从服务端环境变量读取；请求强制 HTTPS、超时、响应大小上限、安全搜索和供应商错误分类。搜索结果默认是短暂响应，不会自动写入数据库或进入 Business Agent；只有用户显式选择、供应商计划允许结果存储且 `GAI_WEB_SEARCH_IMPORT_ENABLED=true` 时，才登记为 PENDING 来源。`research_sources` 保存发现方式、Provider、查询 SHA-256 与发现时间，原始查询不持久化；仍需 ADMIN/MANAGER 人工核验后才成为分析证据。
+
+1.4.0 在相同 Provider 和来源门禁上增加 `research_schedules` 与 `research_schedule_runs`。ADMIN/MANAGER 配置的查询按租户、可选游戏/计划、分类和频率持久化；常驻 Worker 扫描到期任务，用 `lock_token + locked_until` 条件认领，并以 `tenant + schedule + scheduled_for` 唯一键形成运行幂等边界。Worker 崩溃后租约到期可重领同一运行，来源内容哈希继续避免重复落库。成功、限流、上游不可用和校验失败都形成安全运行快照并推进下个周期；运行记录不保存响应全文或凭证。自动发现来源携带 schedule ID、Provider 和查询哈希，状态仍为 PENDING，人工核验边界不变。
 
 Agent 运行中心通过 workflow_steps 与 workflow_runs 的租户内联表聚合生成运行快照，区分服务健康、任务运行态和外部连接态。接口最多返回每个 Agent 三个活动任务与最近一次步骤，不改变持久化工作流状态；前端五秒刷新，并在当前工作流 SSE 更新时立即刷新快照。
 
