@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -22,7 +23,9 @@ func (f fakeWebSearch) Search(context.Context, websearch.Query) (websearch.Respo
 }
 
 type fakeRepository struct {
-	rows map[string]*researchdomain.Source
+	rows      map[string]*researchdomain.Source
+	schedules map[string]*researchdomain.Schedule
+	runs      []researchdomain.ScheduleRun
 }
 
 func (f *fakeRepository) ScopeExists(context.Context, string, string, string) (bool, error) {
@@ -61,6 +64,104 @@ func (f *fakeRepository) SearchVerified(_ context.Context, tenantID, _, _ string
 		}
 	}
 	return result, nil
+}
+
+func (f *fakeRepository) CountEnabledSchedules(_ context.Context, tenantID string) (int64, error) {
+	var count int64
+	for _, row := range f.schedules {
+		if row.TenantID == tenantID && row.Enabled {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (f *fakeRepository) CreateSchedule(_ context.Context, row *researchdomain.Schedule) error {
+	if f.schedules == nil {
+		f.schedules = map[string]*researchdomain.Schedule{}
+	}
+	f.schedules[row.ID] = row
+	return nil
+}
+
+func (f *fakeRepository) GetSchedule(_ context.Context, tenantID, id string) (*researchdomain.Schedule, error) {
+	row := f.schedules[id]
+	if row == nil || row.TenantID != tenantID {
+		return nil, fmt.Errorf("not found")
+	}
+	copy := *row
+	return &copy, nil
+}
+
+func (f *fakeRepository) FindScheduleByKey(_ context.Context, tenantID, key string) (*researchdomain.Schedule, error) {
+	for _, row := range f.schedules {
+		if row.TenantID == tenantID && row.IdempotencyKey == key {
+			copy := *row
+			return &copy, nil
+		}
+	}
+	return nil, nil
+}
+
+func (f *fakeRepository) ListSchedules(_ context.Context, tenantID string) ([]researchdomain.Schedule, error) {
+	rows := []researchdomain.Schedule{}
+	for _, row := range f.schedules {
+		if row.TenantID == tenantID {
+			rows = append(rows, *row)
+		}
+	}
+	return rows, nil
+}
+
+func (f *fakeRepository) UpdateSchedule(_ context.Context, row *researchdomain.Schedule, _ time.Time) (bool, error) {
+	copy := *row
+	f.schedules[row.ID] = &copy
+	return true, nil
+}
+
+func (f *fakeRepository) ListScheduleRuns(_ context.Context, tenantID, scheduleID string, _ int) ([]researchdomain.ScheduleRun, error) {
+	rows := []researchdomain.ScheduleRun{}
+	for _, row := range f.runs {
+		if row.TenantID == tenantID && (scheduleID == "" || row.ScheduleID == scheduleID) {
+			rows = append(rows, row)
+		}
+	}
+	return rows, nil
+}
+
+func (f *fakeRepository) ListDueScheduleIDs(_ context.Context, now time.Time, _ int) ([]string, error) {
+	ids := []string{}
+	for id, row := range f.schedules {
+		if row.Enabled && row.NextRunAt != nil && !row.NextRunAt.After(now) {
+			ids = append(ids, id)
+		}
+	}
+	return ids, nil
+}
+
+func (f *fakeRepository) ClaimSchedule(_ context.Context, id string, now, lockedUntil time.Time, requestedBy, provider string) (*researchdomain.Schedule, *researchdomain.ScheduleRun, bool, error) {
+	row := f.schedules[id]
+	if row == nil || !row.Enabled || row.NextRunAt == nil || row.NextRunAt.After(now) {
+		return nil, nil, false, nil
+	}
+	token := "claim-" + id
+	row.LockToken, row.LockedUntil = token, &lockedUntil
+	run := researchdomain.ScheduleRun{ID: "run-" + id, TenantID: row.TenantID, ScheduleID: id, ScheduledFor: *row.NextRunAt, Status: researchdomain.ScheduleRunProcessing, Provider: provider, QueryHash: row.QueryHash, RequestedBy: requestedBy, ClaimToken: token, StartedAt: now}
+	f.runs = append(f.runs, run)
+	return row, &f.runs[len(f.runs)-1], true, nil
+}
+
+func (f *fakeRepository) CompleteScheduleRun(_ context.Context, schedule *researchdomain.Schedule, run *researchdomain.ScheduleRun, nextRunAt, finishedAt time.Time) (bool, error) {
+	for index := range f.runs {
+		if f.runs[index].ID == run.ID {
+			f.runs[index] = *run
+			f.runs[index].FinishedAt = &finishedAt
+		}
+	}
+	schedule.NextRunAt, schedule.LastRunAt, schedule.LastStatus = &nextRunAt, &finishedAt, run.Status
+	schedule.LastErrorCode, schedule.LastErrorMessage = run.ErrorCode, run.ErrorMessage
+	schedule.LockToken, schedule.LockedUntil = "", nil
+	return true, nil
 }
 
 func TestSourceMustBeVerifiedBeforeAgentCanReadIt(t *testing.T) {
@@ -122,4 +223,82 @@ func TestImportWebResultRequiresStoragePermission(t *testing.T) {
 	service := NewWithWebSearch(&fakeRepository{rows: map[string]*researchdomain.Source{}}, fakeWebSearch{capability: websearch.Capability{Configured: true, Provider: "brave", ImportEnabled: false, MaxResults: 8}})
 	_, err := service.ImportWebResult(context.Background(), Actor{TenantID: "tenant-1", UserID: "user-1"}, WebImportInput{Query: "game market", Category: "MARKET", Result: websearch.Result{Title: "Fresh report", URL: "https://example.com/report", Description: "Current signal", Publisher: "Example"}})
 	require.ErrorContains(t, err, "存储权")
+}
+
+func TestCreateResearchScheduleRequiresImportPermission(t *testing.T) {
+	repo := &fakeRepository{rows: map[string]*researchdomain.Source{}, schedules: map[string]*researchdomain.Schedule{}}
+	provider := fakeWebSearch{capability: websearch.Capability{Configured: true, Provider: "brave", ImportEnabled: false, MaxResults: 8}}
+	service := NewWithWebSearch(repo, provider)
+	_, err := service.CreateSchedule(context.Background(), Actor{TenantID: "tenant-1", UserID: "user-1"}, ScheduleInput{Name: "Weekly market", Category: "MARKET", Query: "mobile game market", ResultCount: 5, IntervalMinutes: 1440, Enabled: true})
+	require.ErrorContains(t, err, "自动发现")
+}
+
+func TestDuplicateResearchScheduleSubmissionReturnsExistingTask(t *testing.T) {
+	repo := &fakeRepository{rows: map[string]*researchdomain.Source{}, schedules: map[string]*researchdomain.Schedule{}}
+	provider := fakeWebSearch{capability: websearch.Capability{Configured: true, Provider: "brave", ImportEnabled: true, MaxResults: 8}}
+	service := NewWithWebSearch(repo, provider)
+	input := ScheduleInput{Name: "Weekly market", Category: "MARKET", Query: "mobile game market", ResultCount: 5, IntervalMinutes: 1440, Enabled: true}
+	first, err := service.CreateSchedule(context.Background(), Actor{TenantID: "tenant-1", UserID: "user-1"}, input)
+	require.NoError(t, err)
+	second, err := service.CreateSchedule(context.Background(), Actor{TenantID: "tenant-1", UserID: "user-1"}, input)
+	require.NoError(t, err)
+	require.Equal(t, first.ID, second.ID)
+	require.Len(t, repo.schedules, 1)
+}
+
+func TestScheduledResearchCreatesPendingSourcesAndRunProvenance(t *testing.T) {
+	repo := &fakeRepository{rows: map[string]*researchdomain.Source{}, schedules: map[string]*researchdomain.Schedule{}}
+	provider := fakeWebSearch{
+		capability: websearch.Capability{Configured: true, Provider: "brave", ImportEnabled: true, MaxResults: 8},
+		response: websearch.Response{Provider: "brave", Results: []websearch.Result{
+			{Title: "Market report", URL: "https://example.com/report", Description: "A current market signal", Publisher: "Example", PublishedAt: "2026-08-09"},
+			{Title: "Incomplete", URL: "https://example.com/incomplete", Publisher: "Example"},
+		}},
+	}
+	service := NewWithWebSearch(repo, provider)
+	now := time.Date(2026, 8, 10, 4, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return now }
+	schedule, err := service.CreateSchedule(context.Background(), Actor{TenantID: "tenant-1", UserID: "user-1"}, ScheduleInput{Name: "Daily market", Category: "MARKET", Query: "mobile game market", ResultCount: 5, IntervalMinutes: 60, Enabled: true})
+	require.NoError(t, err)
+	due := now.Add(-time.Minute)
+	schedule.NextRunAt = &due
+
+	processed, err := service.RunDueSchedules(context.Background(), 20, 2*time.Minute)
+	require.NoError(t, err)
+	require.Equal(t, 1, processed)
+	require.Len(t, repo.rows, 1)
+	for _, source := range repo.rows {
+		require.Equal(t, researchdomain.StatusPending, source.Status)
+		require.Equal(t, "SCHEDULED_WEB_SEARCH", source.DiscoveryMethod)
+		require.Equal(t, schedule.ID, source.DiscoveryScheduleID)
+		require.Equal(t, "brave", source.DiscoveryProvider)
+	}
+	require.Len(t, repo.runs, 1)
+	require.Equal(t, researchdomain.ScheduleRunSucceeded, repo.runs[0].Status)
+	require.Equal(t, 2, repo.runs[0].ResultCount)
+	require.Equal(t, 1, repo.runs[0].ImportedCount)
+	require.Equal(t, 1, repo.runs[0].SkippedCount)
+	require.Equal(t, researchdomain.ScheduleRunSucceeded, schedule.LastStatus)
+	require.True(t, schedule.NextRunAt.After(now))
+}
+
+func TestScheduledResearchRecordsSafeProviderFailureAndAdvances(t *testing.T) {
+	repo := &fakeRepository{rows: map[string]*researchdomain.Source{}, schedules: map[string]*researchdomain.Schedule{}}
+	provider := fakeWebSearch{capability: websearch.Capability{Configured: true, Provider: "brave", ImportEnabled: true, MaxResults: 8}, err: &websearch.Error{Code: "RATE_LIMITED", Message: "provider rate limited", Retryable: true}}
+	service := NewWithWebSearch(repo, provider)
+	now := time.Date(2026, 8, 10, 4, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return now }
+	schedule, err := service.CreateSchedule(context.Background(), Actor{TenantID: "tenant-1", UserID: "user-1"}, ScheduleInput{Name: "Daily market", Category: "MARKET", Query: "mobile game market", ResultCount: 5, IntervalMinutes: 60, Enabled: true})
+	require.NoError(t, err)
+	due := now.Add(-time.Minute)
+	schedule.NextRunAt = &due
+
+	processed, err := service.RunDueSchedules(context.Background(), 20, 2*time.Minute)
+	require.Equal(t, 1, processed)
+	require.Error(t, err)
+	require.Len(t, repo.runs, 1)
+	require.Equal(t, researchdomain.ScheduleRunFailed, repo.runs[0].Status)
+	require.Equal(t, "RATE_LIMITED", repo.runs[0].ErrorCode)
+	require.Equal(t, researchdomain.ScheduleRunFailed, schedule.LastStatus)
+	require.True(t, schedule.NextRunAt.After(now))
 }

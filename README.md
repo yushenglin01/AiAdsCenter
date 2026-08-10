@@ -1,5 +1,7 @@
 # AdNova · 星曜智投
 
+<p align="center"><strong>简体中文</strong> · <a href="README_EN.md">English</a></p>
+
 <p align="center">
   <img src="docs/assets/adnova-hero-v2.png" alt="AdNova 让每一笔投放穿越数据噪声" width="100%" />
 </p>
@@ -8,9 +10,9 @@
 
 AdNova（星曜智投）是面向海外游戏投放团队的广告经营智能分析平台。它统一接收广告平台、MMP、游戏收入与素材表现数据，由确定性代码计算指标，并由受限 Agent 生成解释、建议和审批单。
 
-当前仓库完成 **阶段十三：真实 MMP 自动拉取**。AppsFlyer 与 Adjust 共用只读连接器、权威区间导入和同步审计边界；配置服务端凭证与游戏映射后，Worker 可按计划自动回拉。
+当前仓库完成 **阶段十四：自动化 Research 定时发现**。ADMIN/MANAGER 可按租户和游戏/计划配置公开网页研究任务；Worker 使用数据库租约执行，所有新来源仍进入人工核验队列。
 
-当前项目版本：**1.3.0**；最近迭代：**DEV-20260809-002**。版本历史见 [迭代索引](docs/iterations/README.md) 和 [变更日志](docs/releases/CHANGELOG.md)。
+当前项目版本：**1.4.0**；最近迭代：**DEV-20260810-001**。版本历史见 [迭代索引](docs/iterations/README.md) 和 [变更日志](docs/releases/CHANGELOG.md)。
 
 ## 核心边界
 
@@ -143,7 +145,17 @@ API 用法见 [docs/api.md](docs/api.md)，架构说明见 [docs/architecture.md
 
 脚本可重复执行，不会新增重复任务或事实数据。导入完成后会同步重新计算指标、执行三类规则分析，并为 Meta 示例提交一次幂等 Mock Business Agent 异步任务。示例包含 Meta 异常样本、Google 正常对照、TikTok 扩量样本、AppsFlyer、游戏收入和素材表现；CSV 示例也位于 `examples/generated/`。
 
-Research Agent 支持通过可选的 Brave Search API 实时检索公开网页；API Key 只保存在服务端，结果默认不持久化。启用结果入库后，用户可把选中结果登记为 PENDING 来源，仍需 ADMIN/MANAGER 人工核验后才会进入分析上下文。OpenClaw 提供内部命令、SSE 状态流、审批 Inbox 和站内消息；外部 IM/邮件/Webhook 仍为 NOT_CONFIGURED，不会伪造投递成功。
+Research Agent 支持通过可选的 Brave Search API 实时检索公开网页；API Key 只保存在服务端，结果默认不持久化。确认供应商存储权并启用结果入库后，用户可手工登记选中结果，也可由 Worker 按持久化任务定时发现。两种路径都只创建 PENDING 来源，仍需 ADMIN/MANAGER 人工核验后才会进入分析上下文。OpenClaw 提供内部命令、SSE 状态流、审批 Inbox 和站内消息；外部 IM/邮件/Webhook 仍为 NOT_CONFIGURED，不会伪造投递成功。
+
+启用定时发现前必须确认所选搜索服务套餐允许结果存储，并同时配置：
+
+```bash
+GAI_WEB_SEARCH_API_KEY=...
+GAI_WEB_SEARCH_IMPORT_ENABLED=true
+GAI_RESEARCH_SCHEDULER_ENABLED=true
+GAI_RESEARCH_SCHEDULER_POLL_INTERVAL=1m
+GAI_RESEARCH_SCHEDULER_LEASE=2m
+```
 
 AppsFlyer 使用服务端 `GAI_APPSFLYER_API_TOKEN`；Adjust 使用 `GAI_ADJUST_API_TOKEN` 及激活、付费人数、收入三个事件指标 slug。前端和数据库只保存“凭证是否已配置”与游戏到 App ID/App Token 的映射，不保存或返回 API Token。单次手工同步默认分别最多 7 天和 31 天；开启 `GAI_MMP_AUTO_SYNC_ENABLED` 后，Asynq Worker 会遍历所有租户的就绪连接，按回看窗口每日吸收延迟归因修正。
 
@@ -165,11 +177,11 @@ Compose 不内置 Kafka Broker。消费端使用 MySQL Inbox、手动 Offset 提
 
 OpenClaw 内部命令入口为 `POST /api/v1/openclaw/commands`，可启动完整分析工作流。Hermes/外部 OpenClaw HTTP 与消息推送仍保持适配边界；当前没有对应环境，因此 Agent 目录会明确标记为未配置。
 
-## 阶段十三完成情况
+## 阶段十四完成情况
 
-已完成：阶段一至十二全部能力；provider-neutral MMP 拉取边界；Adjust Report Service 只读连接器；AppsFlyer/Adjust 独立映射与手工同步入口；跨租户自动回拉、Provider 级日期上限、权威区间替换与同步审计。
+已完成：阶段一至十三全部能力；租户范围 Research 任务配置与启停；数据库租约认领和崩溃后恢复；安全运行记录、查询哈希和任务级来源溯源；自动结果去重、PENDING 人工核验门禁与前端运营界面。
 
-仍未完成：企业 SSO/SCIM、邀请制注册、找回密码、管理员强制下线；真实 Kafka 集群与 MMP 凭证联调、Meta/Google/TikTok 原生只读连接器、自动化 Research 定时任务、外部消息投递、生产级不可篡改审计存储、跨进程 OpenTelemetry 与真实模型联调。系统仍没有广告平台执行工具；APPROVED 仅表示人工认可建议，不表示执行。
+仍未完成：企业 SSO/SCIM、邀请制注册、找回密码、管理员强制下线；真实 Kafka 集群与 MMP/Brave 凭证联调、Meta/Google/TikTok 原生只读连接器、外部消息投递、生产级不可篡改审计存储、跨进程 OpenTelemetry 与真实模型联调。系统仍没有广告平台执行工具；APPROVED 仅表示人工认可建议，不表示执行。
 
 ## 开源与安全
 
