@@ -14,21 +14,22 @@ import (
 )
 
 type Config struct {
-	Environment  string
-	HTTP         HTTPConfig
-	Database     DatabaseConfig
-	Redis        RedisConfig
-	JWT          JWTConfig
-	Tenant       TenantConfig
-	Demo         DemoConfig
-	LLM          LLMConfig
-	Queue        QueueConfig
-	Kafka        KafkaConfig
-	AppsFlyer    AppsFlyerConfig
-	Adjust       AdjustConfig
-	MMPAutoSync  MMPAutoSyncConfig
-	WebSearch    WebSearchConfig
-	Registration RegistrationConfig
+	Environment       string
+	HTTP              HTTPConfig
+	Database          DatabaseConfig
+	Redis             RedisConfig
+	JWT               JWTConfig
+	Tenant            TenantConfig
+	Demo              DemoConfig
+	LLM               LLMConfig
+	Queue             QueueConfig
+	Kafka             KafkaConfig
+	AppsFlyer         AppsFlyerConfig
+	Adjust            AdjustConfig
+	MMPAutoSync       MMPAutoSyncConfig
+	WebSearch         WebSearchConfig
+	ResearchScheduler ResearchSchedulerConfig
+	Registration      RegistrationConfig
 }
 
 type HTTPConfig struct {
@@ -137,6 +138,13 @@ type WebSearchConfig struct {
 	ImportEnabled bool
 }
 
+type ResearchSchedulerConfig struct {
+	Enabled      bool
+	PollInterval time.Duration
+	BatchSize    int
+	Lease        time.Duration
+}
+
 type RegistrationConfig struct {
 	Enabled             bool
 	PublicBaseURL       string
@@ -230,6 +238,10 @@ func Load() (Config, error) {
 		"web_search.max_results":             8,
 		"web_search.safe_search":             "strict",
 		"web_search.import_enabled":          false,
+		"research_scheduler.enabled":         false,
+		"research_scheduler.poll_interval":   "1m",
+		"research_scheduler.batch_size":      20,
+		"research_scheduler.lease":           "2m",
 		"registration.enabled":               true,
 		"registration.public_base_url":       "http://localhost:5173",
 		"registration.verification_ttl":      "24h",
@@ -296,6 +308,10 @@ func Load() (Config, error) {
 			Provider: strings.ToLower(strings.TrimSpace(v.GetString("web_search.provider"))), BaseURL: strings.TrimRight(strings.TrimSpace(v.GetString("web_search.base_url")), "/"),
 			APIKey: strings.TrimSpace(v.GetString("web_search.api_key")), Timeout: v.GetDuration("web_search.timeout"), MaxResults: v.GetInt("web_search.max_results"),
 			SafeSearch: strings.ToLower(strings.TrimSpace(v.GetString("web_search.safe_search"))), ImportEnabled: v.GetBool("web_search.import_enabled"),
+		},
+		ResearchScheduler: ResearchSchedulerConfig{
+			Enabled: v.GetBool("research_scheduler.enabled"), PollInterval: v.GetDuration("research_scheduler.poll_interval"),
+			BatchSize: v.GetInt("research_scheduler.batch_size"), Lease: v.GetDuration("research_scheduler.lease"),
 		},
 		Registration: RegistrationConfig{
 			Enabled:             v.GetBool("registration.enabled"),
@@ -389,6 +405,12 @@ func Load() (Config, error) {
 	}
 	if cfg.WebSearch.ImportEnabled && (cfg.WebSearch.Provider != "brave" || cfg.WebSearch.APIKey == "") {
 		return Config{}, fmt.Errorf("web search import requires a configured provider API key")
+	}
+	if cfg.ResearchScheduler.PollInterval < 10*time.Second || cfg.ResearchScheduler.PollInterval > 10*time.Minute || cfg.ResearchScheduler.BatchSize < 1 || cfg.ResearchScheduler.BatchSize > 100 || cfg.ResearchScheduler.Lease < time.Minute || cfg.ResearchScheduler.Lease > 30*time.Minute {
+		return Config{}, fmt.Errorf("research scheduler configuration is invalid")
+	}
+	if cfg.ResearchScheduler.Enabled && !cfg.WebSearch.ImportEnabled {
+		return Config{}, fmt.Errorf("research scheduler requires web search import to be enabled")
 	}
 	if cfg.Registration.Enabled {
 		publicURL, err := url.Parse(cfg.Registration.PublicBaseURL)

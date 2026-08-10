@@ -26,6 +26,23 @@
 
 * 无。
 
+## [1.4.0] - 2026-08-10
+
+### Added
+
+* 新增租户范围 Research 定时任务、独立运行记录和 Worker 数据库租约调度。
+* 新增任务配置/启停、运行历史 API 与 Research 来源库运营界面。
+
+### Changed
+
+* 自动发现来源增加任务 ID 溯源，复用现有 Provider、内容哈希去重和 PENDING 人工核验边界。
+* Compose Worker 显式接收 Web Search 与 Research Scheduler 服务端配置。
+
+### Security
+
+* 定时任务配置限 ADMIN/MANAGER，每租户最多启用 20 个；启用前强制确认结果存储权。
+* 运行记录和审计只保存查询哈希、Provider、计数及安全错误，不保存响应全文或凭证。
+
 ## [1.3.0] - 2026-08-09
 
 ### Added

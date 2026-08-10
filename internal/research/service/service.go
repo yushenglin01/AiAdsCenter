@@ -14,6 +14,7 @@ import (
 	auditdomain "github.com/example/adnova/internal/audit/domain"
 	auditservice "github.com/example/adnova/internal/audit/service"
 	"github.com/example/adnova/internal/common/apperror"
+	"github.com/example/adnova/internal/common/identity"
 	researchdomain "github.com/example/adnova/internal/research/domain"
 	"github.com/example/adnova/internal/research/websearch"
 	"github.com/google/uuid"
@@ -27,6 +28,19 @@ type Repository interface {
 	List(context.Context, string, researchdomain.Filter) ([]researchdomain.Source, error)
 	Decide(context.Context, string, string, string, string, string) (*researchdomain.Source, error)
 	SearchVerified(context.Context, string, string, string, time.Time, int) ([]researchdomain.Source, error)
+}
+
+type ScheduleRepository interface {
+	CountEnabledSchedules(context.Context, string) (int64, error)
+	CreateSchedule(context.Context, *researchdomain.Schedule) error
+	GetSchedule(context.Context, string, string) (*researchdomain.Schedule, error)
+	FindScheduleByKey(context.Context, string, string) (*researchdomain.Schedule, error)
+	ListSchedules(context.Context, string) ([]researchdomain.Schedule, error)
+	UpdateSchedule(context.Context, *researchdomain.Schedule, time.Time) (bool, error)
+	ListScheduleRuns(context.Context, string, string, int) ([]researchdomain.ScheduleRun, error)
+	ListDueScheduleIDs(context.Context, time.Time, int) ([]string, error)
+	ClaimSchedule(context.Context, string, time.Time, time.Time, string, string) (*researchdomain.Schedule, *researchdomain.ScheduleRun, bool, error)
+	CompleteScheduleRun(context.Context, *researchdomain.Schedule, *researchdomain.ScheduleRun, time.Time, time.Time) (bool, error)
 }
 
 type CreateInput struct {
@@ -79,18 +93,23 @@ type WebImportInput struct {
 }
 
 type discovery struct {
-	method, provider, queryHash string
-	discoveredAt                *time.Time
+	method, provider, queryHash, scheduleID string
+	discoveredAt                            *time.Time
 }
 
 type Service struct {
-	repo    Repository
-	auditor auditservice.Recorder
-	web     websearch.Provider
+	repo         Repository
+	scheduleRepo ScheduleRepository
+	auditor      auditservice.Recorder
+	web          websearch.Provider
+	now          func() time.Time
 }
 
 func New(repo Repository, auditors ...auditservice.Recorder) *Service {
-	result := &Service{repo: repo}
+	result := &Service{repo: repo, now: func() time.Time { return time.Now().UTC() }}
+	if scheduleRepo, ok := repo.(ScheduleRepository); ok {
+		result.scheduleRepo = scheduleRepo
+	}
 	if len(auditors) > 0 {
 		result.auditor = auditors[0]
 	}
@@ -108,55 +127,60 @@ func (s *Service) Create(ctx context.Context, actor Actor, input CreateInput) (*
 }
 
 func (s *Service) create(ctx context.Context, actor Actor, input CreateInput, origin discovery) (*researchdomain.Source, error) {
+	row, _, err := s.createWithStatus(ctx, actor, input, origin)
+	return row, err
+}
+
+func (s *Service) createWithStatus(ctx context.Context, actor Actor, input CreateInput, origin discovery) (*researchdomain.Source, bool, error) {
 	input.Category = strings.ToUpper(strings.TrimSpace(input.Category))
 	input.Title, input.Summary = strings.TrimSpace(input.Title), strings.TrimSpace(input.Summary)
 	input.Publisher = strings.TrimSpace(input.Publisher)
 	if !validCategory(input.Category) || input.Title == "" || input.Summary == "" || input.Publisher == "" {
-		return nil, apperror.Validation("category, title, summary and publisher are required")
+		return nil, false, apperror.Validation("category, title, summary and publisher are required")
 	}
 	if input.CampaignID != "" && input.GameID == "" {
-		return nil, apperror.Validation("game_id is required when campaign_id is provided")
+		return nil, false, apperror.Validation("game_id is required when campaign_id is provided")
 	}
 	if input.GameID != "" {
 		exists, scopeErr := s.repo.ScopeExists(ctx, actor.TenantID, input.GameID, input.CampaignID)
 		if scopeErr != nil {
-			return nil, scopeErr
+			return nil, false, scopeErr
 		}
 		if !exists {
-			return nil, apperror.Validation("research source scope does not belong to the current tenant")
+			return nil, false, apperror.Validation("research source scope does not belong to the current tenant")
 		}
 	}
 	normalizedURL, err := normalizeSourceURL(input.SourceURL)
 	if err != nil {
-		return nil, apperror.Validation(err.Error())
+		return nil, false, apperror.Validation(err.Error())
 	}
 	publishedAt, err := time.Parse("2006-01-02", input.PublishedAt)
 	if err != nil {
-		return nil, apperror.Validation("published_at must be YYYY-MM-DD")
+		return nil, false, apperror.Validation("published_at must be YYYY-MM-DD")
 	}
 	if publishedAt.After(time.Now().UTC().AddDate(0, 0, 1)) {
-		return nil, apperror.Validation("published_at cannot be in the future")
+		return nil, false, apperror.Validation("published_at cannot be in the future")
 	}
 	digest := sha256.Sum256([]byte(strings.Join([]string{normalizedURL, input.Title, input.Summary}, "\n")))
 	hash := hex.EncodeToString(digest[:])
 	existing, err := s.repo.FindByHash(ctx, actor.TenantID, hash)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if existing != nil {
-		return existing, nil
+		return existing, false, nil
 	}
 	if origin.method == "" {
 		origin.method = "MANUAL"
 	}
-	row := &researchdomain.Source{ID: uuid.NewString(), TenantID: actor.TenantID, GameID: input.GameID, CampaignID: input.CampaignID, Category: input.Category, Title: input.Title, Summary: input.Summary, SourceURL: normalizedURL, DiscoveryMethod: origin.method, DiscoveryProvider: origin.provider, DiscoveryQueryHash: origin.queryHash, DiscoveredAt: origin.discoveredAt, Publisher: input.Publisher, PublishedAt: publishedAt, ContentHash: hash, Status: researchdomain.StatusPending, CreatedBy: actor.UserID}
+	row := &researchdomain.Source{ID: uuid.NewString(), TenantID: actor.TenantID, GameID: input.GameID, CampaignID: input.CampaignID, Category: input.Category, Title: input.Title, Summary: input.Summary, SourceURL: normalizedURL, DiscoveryMethod: origin.method, DiscoveryProvider: origin.provider, DiscoveryQueryHash: origin.queryHash, DiscoveryScheduleID: origin.scheduleID, DiscoveredAt: origin.discoveredAt, Publisher: input.Publisher, PublishedAt: publishedAt, ContentHash: hash, Status: researchdomain.StatusPending, CreatedBy: actor.UserID}
 	if err := s.repo.Create(ctx, row); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if err := s.record(ctx, actor, "RESEARCH_SOURCE_REGISTERED", row); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return row, nil
+	return row, true, nil
 }
 
 func (s *Service) WebCapability() websearch.Capability {
@@ -197,7 +221,7 @@ func (s *Service) SearchWeb(ctx context.Context, actor Actor, input WebSearchInp
 	queryHash := hashText(input.Query)
 	if s.auditor != nil {
 		auditID := uuid.NewString()
-		if err := s.auditor.Record(ctx, auditdomain.RecordInput{TenantID: actor.TenantID, ActorID: actor.UserID, ActorType: "USER", Action: "RESEARCH_WEB_SEARCHED", ResourceType: "RESEARCH_WEB_QUERY", ResourceID: auditID, After: map[string]any{"query_hash": queryHash, "provider": response.Provider, "result_count": len(response.Results), "game_id": input.GameID, "campaign_id": input.CampaignID}, RequestID: actor.RequestID, TraceID: actor.TraceID}); err != nil {
+		if err := s.auditor.Record(ctx, auditdomain.RecordInput{TenantID: actor.TenantID, ActorID: actor.UserID, ActorType: actorType(actor.UserID), Action: "RESEARCH_WEB_SEARCHED", ResourceType: "RESEARCH_WEB_QUERY", ResourceID: auditID, After: map[string]any{"query_hash": queryHash, "provider": response.Provider, "result_count": len(response.Results), "game_id": input.GameID, "campaign_id": input.CampaignID}, RequestID: actor.RequestID, TraceID: actor.TraceID}); err != nil {
 			return nil, err
 		}
 	}
@@ -359,5 +383,12 @@ func (s *Service) record(ctx context.Context, actor Actor, action string, row *r
 	if s.auditor == nil {
 		return nil
 	}
-	return s.auditor.Record(ctx, auditdomain.RecordInput{TenantID: actor.TenantID, ActorID: actor.UserID, ActorType: "USER", Action: action, ResourceType: "RESEARCH_SOURCE", ResourceID: row.ID, After: row, RequestID: actor.RequestID, TraceID: actor.TraceID})
+	return s.auditor.Record(ctx, auditdomain.RecordInput{TenantID: actor.TenantID, ActorID: actor.UserID, ActorType: actorType(actor.UserID), Action: action, ResourceType: "RESEARCH_SOURCE", ResourceID: row.ID, After: row, RequestID: actor.RequestID, TraceID: actor.TraceID})
+}
+
+func actorType(userID string) string {
+	if userID == identity.SystemAgentUserID {
+		return "SYSTEM_AGENT"
+	}
+	return "USER"
 }
