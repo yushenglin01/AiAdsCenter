@@ -63,7 +63,7 @@ docker compose up -d --build
 - 付费事件名，默认 `af_purchase`，多个事件用逗号配置；
 - 用于校对的 AppsFlyer 后台日期、时区和汇总值。
 
-在“数据导入”保存游戏到 App ID 的映射。连接显示 `READY` 后，先同步昨天单日，再扩大到最多 7 天。接口只读，不会调用广告平台写 API。
+在“数据导入”保存游戏到 App ID 的映射。配置齐全时连接先显示“待验证（`UNVERIFIED`）”；先同步昨天单日，真实拉取和导入成功后才显示“已验证（`READY`）”，再扩大到最多 7 天。接口只读，不会调用广告平台写 API。
 
 ### Adjust 只读拉取
 
@@ -73,7 +73,7 @@ docker compose up -d --build
 - activation、payer、revenue 三个 Report Service 指标 slug；
 - 每个游戏的 Adjust App Token（仅作为连接映射保存，不是 API Token）。
 
-在“数据导入”保存 Adjust 映射，显示 `READY` 后先同步昨天单日。手工单次最多 31 天；连接器只调用 Report Service GET 接口，不调用 Adjust 或广告平台写接口。
+在“数据导入”保存 Adjust 映射，显示“待验证（`UNVERIFIED`）”后先同步昨天单日；真实拉取和导入成功后才显示“已验证（`READY`）”。手工单次最多 31 天；连接器只调用 Report Service GET 接口，不调用 Adjust 或广告平台写接口。
 
 如需配置后自动拉取，再设置：
 
@@ -83,7 +83,7 @@ GAI_MMP_AUTO_SYNC_INTERVAL=1h
 GAI_MMP_AUTO_SYNC_LOOKBACK_DAYS=3
 ```
 
-Asynq Worker 会在启动时和每个间隔扫描所有租户的 ACTIVE/READY AppsFlyer、Adjust 连接。滚动回看会覆盖同来源、游戏和日期范围，适合吸收延迟归因修正；启用前应先完成单日人工核对。
+Asynq Worker 会在启动时和每个间隔扫描所有租户中 ACTIVE 且服务端配置齐全的 AppsFlyer、Adjust 连接，包括 `UNVERIFIED` 连接。滚动回看会覆盖同来源、游戏和日期范围，适合吸收延迟归因修正；启用前应先完成单日人工核对。
 
 ### 标准 HTTP 批次
 
@@ -103,11 +103,11 @@ docker compose --profile kafka up -d --build
 
 ### 真实 LLM
 
-真实经营指标接入不要求立即启用真实模型。建议先保持 `LLM_PROVIDER=mock` 验证确定性指标，再配置 OpenAI-compatible 服务：
+真实经营指标接入不要求立即启用真实模型。建议先保持 `LLM_PROVIDER=mock` 验证确定性指标，再通过统一的 OpenAI-compatible Chat Completions 协议配置 OpenAI、DeepSeek 或其他兼容服务：
 
 ```dotenv
-LLM_PROVIDER=openai-compatible
-LLM_BASE_URL=https://<provider>/v1
+LLM_PROVIDER=openai # 也可使用 deepseek、openai-compatible 或 custom
+LLM_BASE_URL=        # openai/deepseek 可留空；自定义服务填写 https://<provider>/v1
 LLM_API_KEY=<secret>
 LLM_MODEL=<model-id>
 ```

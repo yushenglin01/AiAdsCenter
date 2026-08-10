@@ -264,10 +264,10 @@ func newSteps(workflowID, tenantID string) []domain.Step {
 		{"openclaw-agent", "INTERACTION_GATEWAY"},
 		{"data-agent", "SYNCHRONOUS_DETERMINISTIC"},
 		{"attribution-agent", "SYNCHRONOUS_DETERMINISTIC"},
-		{"creative-agent", "SYNCHRONOUS_DETERMINISTIC"},
-		{"research-agent", "EXTERNAL_RESEARCH"},
+		{"creative-agent", "HYBRID_DETERMINISTIC_LLM"},
+		{"research-agent", "HYBRID_VERIFIED_RESEARCH_LLM"},
 		{"business-agent", "ASYNCHRONOUS_LLM"},
-		{"report-agent", "SYNCHRONOUS_DETERMINISTIC"},
+		{"report-agent", "HYBRID_DETERMINISTIC_LLM"},
 	}
 	steps := make([]domain.Step, 0, len(definitions))
 	for index, definition := range definitions {

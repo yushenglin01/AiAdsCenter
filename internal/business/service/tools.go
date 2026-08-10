@@ -45,7 +45,7 @@ func (s *Service) registerTools() error {
 	return nil
 }
 
-func (s *Service) collectInput(ctx context.Context, tenantID, userID, taskID, gameID, campaignID, analysisDate string) (*BusinessInput, error) {
+func (s *Service) collectInput(ctx context.Context, tenantID, userID, taskID, workflowID, gameID, campaignID, analysisDate string) (*BusinessInput, error) {
 	toolContext := agenttools.Context{TenantID: tenantID, UserID: userID, TaskID: taskID}
 	args, _ := json.Marshal(readArgs{GameID: gameID, CampaignID: campaignID, AnalysisDate: analysisDate})
 	execute := func(name string) (json.RawMessage, error) {
@@ -105,6 +105,14 @@ func (s *Service) collectInput(ctx context.Context, tenantID, userID, taskID, ga
 		}
 	}
 	result.Constraints = []string{"不得直接修改预算", "所有结论必须引用输入数据", "证据不足时必须标记待验证", "不得调用未注册工具", "高风险建议必须人工审批"}
+	agentContext, err := s.repo.WorkflowAgentOutputs(ctx, tenantID, workflowID, []string{"creative-agent", "research-agent"})
+	if err != nil {
+		return nil, err
+	}
+	if len(agentContext) > 0 {
+		result.AgentContext = agentContext
+		result.Constraints = append(result.Constraints, "agent_context 仅用于辅助解释，不能作为确定性数值证据")
+	}
 	return &result, nil
 }
 

@@ -10,7 +10,7 @@ export interface ImportJob {
 }
 export interface MMPConnection {
   id: string; game_id: string; provider: 'APPSFLYER' | 'ADJUST'; external_app_id: string; status: 'ACTIVE' | 'DISABLED';
-  credential_configured: boolean; health: 'READY' | 'NOT_CONFIGURED' | 'DISABLED'; last_sync_at?: string; created_at: string; updated_at: string
+  credential_configured: boolean; health: 'READY' | 'UNVERIFIED' | 'NOT_CONFIGURED' | 'DISABLED'; last_sync_at?: string; created_at: string; updated_at: string
 }
 export interface MMPSyncRun {
   id: string; connection_id: string; provider: 'APPSFLYER' | 'ADJUST'; period_start: string; period_end: string;

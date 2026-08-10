@@ -7,7 +7,7 @@
 
 AppsFlyer 与 Adjust 实现同一个只读 `Fetcher` 契约，输出平台无关的 MMP 记录与安全错误。连接、同步运行、幂等键、计划归属校验、权威日期区间替换和审计继续由应用服务统一负责，Provider 客户端只处理官方协议、重试与确定性规范化。
 
-自动拉取由常驻 Worker 独立执行，不由指标查询或 Agent 隐式触发。Worker 扫描全部租户的 ACTIVE/READY 连接，使用 SYSTEM_AGENT 身份、滚动回看窗口和 Provider 最大日期上限调用同一同步服务。同一连接与滚动窗口由同步幂等键阻止重复上游请求；失败不更新 `last_sync_at`，下一轮可安全重试。
+自动拉取由常驻 Worker 独立执行，不由指标查询或 Agent 隐式触发。Worker 扫描全部租户中 ACTIVE 且服务端配置齐全的连接（包括尚无成功同步的 `UNVERIFIED` 连接），使用 SYSTEM_AGENT 身份、滚动回看窗口和 Provider 最大日期上限调用同一同步服务。同一连接与滚动窗口由同步幂等键阻止重复上游请求；失败不更新 `last_sync_at`，下一轮可安全重试。
 
 Adjust API Token 与事件指标 slug 是部署级机密，只从环境变量读取；数据库仅保存游戏到 App Token 的业务映射。连接器固定官方 HTTPS Host，并且只实现 GET 报表能力。
 

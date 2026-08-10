@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "openclaw-agent-llm-output/1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["intent", "input", "requires_confirmation", "confidence", "missing_fields"],
+  "properties": {
+    "intent": {"enum": ["RUN_FULL_ANALYSIS", "GET_WORKFLOW_STATUS", "LIST_PENDING_APPROVALS", "LIST_NOTIFICATIONS", "MARK_NOTIFICATION_READ"]},
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "game_id": {"type": "string"},
+        "campaign_id": {"type": "string"},
+        "analysis_date": {"type": "string"},
+        "workflow_id": {"type": "string"},
+        "notification_status": {"type": "string"},
+        "notification_id": {"type": "string"}
+      }
+    },
+    "requires_confirmation": {"type": "boolean"},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "missing_fields": {"type": "array", "items": {"type": "string"}}
+  }
+}

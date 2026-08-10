@@ -26,6 +26,30 @@
 
 * 无。
 
+## [1.4.1] - 2026-08-10
+
+### Added
+
+* Research、Creative、OpenClaw 和 Report 增加共享的受约束 LLM Runtime、版本化 Prompt/Schema 与模型用量溯源。
+* OpenClaw 增加白名单自然语言命令解析和启动分析二次确认。
+
+### Changed
+
+* MMP 连接健康改为 `NOT_CONFIGURED`、`UNVERIFIED`、`READY`、`DISABLED` 四态；只有真实同步成功后才标记 READY。
+* 数据导入页允许待验证连接执行首次同步，并用中文状态与最后成功时间解释连接是否经过验证。
+* Business Prompt 升级至 1.2.0，可读取其他 Agent 的辅助上下文但不把它作为确定性证据。
+
+### Fixed
+
+* 修复仅配置服务端 Token 就把 AppsFlyer/Adjust 连接显示为 READY 的假就绪问题。
+* 修复重复同步命中正在执行的运行时，前端错误提示“同步完成”的问题。
+* Agent LLM 输出出现虚构引用、非法结构或来源摘要不一致时自动回退或拒绝执行。
+
+### Security
+
+* 健康状态仍只返回凭证配置布尔值和同步结果，不暴露 Token、指标映射值或上游原始错误正文。
+* Data 与 Attribution 继续保持纯确定性；LLM Agent 不能执行广告平台写操作或绕过审批。
+
 ## [1.4.0] - 2026-08-10
 
 ### Added
