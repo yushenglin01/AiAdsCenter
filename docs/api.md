@@ -1,4 +1,4 @@
-# 阶段十三 API（项目 1.3.0）
+# 阶段十四 API（项目 1.4.0）
 
 所有业务 API 使用 `/api/v1` 前缀，响应格式为 `{ code, message, data, request_id }`。
 
@@ -183,6 +183,26 @@ Token 响应的 `data`：
 ```
 
 `freshness` 可省略，或使用 `pd`、`pw`、`pm`、`py`。查询最长 400 字符/50 个词，结果数不能超过 `GAI_WEB_SEARCH_MAX_RESULTS`。搜索 API Key 只保存在服务端；Brave Search 使用 `X-Subscription-Token` 调用官方 HTTPS endpoint。搜索成功会记录查询 SHA-256、Provider、结果数和作用域审计，不记录原始查询。若要把结果保存为来源，必须先确认供应商计划包含存储权并设置 `GAI_WEB_SEARCH_IMPORT_ENABLED=true`；入库后状态仍为 PENDING。
+
+自动研究任务由 ADMIN/MANAGER 创建或修改：
+
+```json
+{
+  "name": "日本市场政策每日追踪",
+  "game_id": "30000000-0000-4000-8000-000000000001",
+  "campaign_id": "50000000-0000-4000-8000-000000000001",
+  "category": "POLICY",
+  "query": "日本手游广告市场最新政策与平台变化",
+  "country": "JP",
+  "search_lang": "zh-hans",
+  "freshness": "pw",
+  "result_count": 6,
+  "interval_minutes": 1440,
+  "enabled": true
+}
+```
+
+接口为 `GET/POST /api/v1/research/schedules`、`PUT /api/v1/research/schedules/:id` 和 `GET /api/v1/research/schedule-runs`。完全相同的创建请求命中服务端配置幂等键并返回既有任务。每租户最多启用 20 个任务，间隔为 60–10080 分钟。启用任务要求 `GAI_WEB_SEARCH_IMPORT_ENABLED=true`，Worker 还需设置 `GAI_RESEARCH_SCHEDULER_ENABLED=true`。运行使用数据库租约和计划时点唯一键；重复结果按来源内容哈希计数并跳过，完整新结果登记为 `SCHEDULED_WEB_SEARCH/PENDING`，不会自动核验或进入 Agent 上下文。
 
 OpenClaw 命令请求：
 

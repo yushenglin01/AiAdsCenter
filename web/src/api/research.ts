@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 import type { ApiEnvelope } from '@/types/api'
-import type { ResearchSource, ResearchSourceInput, WebImportInput, WebSearchCapability, WebSearchInput, WebSearchResponse } from '@/types/research'
+import type { ResearchSchedule, ResearchScheduleInput, ResearchScheduleRun, ResearchSource, ResearchSourceInput, WebImportInput, WebSearchCapability, WebSearchInput, WebSearchResponse } from '@/types/research'
 
 export const researchApi = {
   list: async () => {
@@ -29,6 +29,22 @@ export const researchApi = {
   },
   importWebResult: async (payload: WebImportInput) => {
     const { data } = await apiClient.post<ApiEnvelope<ResearchSource>>('/research/web-search/import', payload)
+    return data.data
+  },
+  listSchedules: async () => {
+    const { data } = await apiClient.get<ApiEnvelope<ResearchSchedule[]>>('/research/schedules')
+    return data.data
+  },
+  createSchedule: async (payload: ResearchScheduleInput) => {
+    const { data } = await apiClient.post<ApiEnvelope<ResearchSchedule>>('/research/schedules', payload)
+    return data.data
+  },
+  updateSchedule: async (id: string, payload: ResearchScheduleInput) => {
+    const { data } = await apiClient.put<ApiEnvelope<ResearchSchedule>>(`/research/schedules/${id}`, payload)
+    return data.data
+  },
+  listScheduleRuns: async (scheduleID?: string) => {
+    const { data } = await apiClient.get<ApiEnvelope<ResearchScheduleRun[]>>('/research/schedule-runs', { params: { schedule_id: scheduleID, limit: 100 } })
     return data.data
   },
 }

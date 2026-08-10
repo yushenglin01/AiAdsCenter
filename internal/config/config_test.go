@@ -123,3 +123,25 @@ func TestWebSearchRejectsUnexpectedBaseURL(t *testing.T) {
 	_, err := Load()
 	require.ErrorContains(t, err, "https://api.search.brave.com")
 }
+
+func TestResearchSchedulerRequiresStoragePermission(t *testing.T) {
+	t.Setenv("GAI_RESEARCH_SCHEDULER_ENABLED", "true")
+	t.Setenv("GAI_WEB_SEARCH_IMPORT_ENABLED", "false")
+	_, err := Load()
+	require.ErrorContains(t, err, "requires web search import")
+}
+
+func TestResearchSchedulerConfiguration(t *testing.T) {
+	t.Setenv("GAI_WEB_SEARCH_API_KEY", "server-only-key")
+	t.Setenv("GAI_WEB_SEARCH_IMPORT_ENABLED", "true")
+	t.Setenv("GAI_RESEARCH_SCHEDULER_ENABLED", "true")
+	t.Setenv("GAI_RESEARCH_SCHEDULER_POLL_INTERVAL", "30s")
+	t.Setenv("GAI_RESEARCH_SCHEDULER_BATCH_SIZE", "12")
+	t.Setenv("GAI_RESEARCH_SCHEDULER_LEASE", "3m")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.True(t, cfg.ResearchScheduler.Enabled)
+	require.Equal(t, 30*time.Second, cfg.ResearchScheduler.PollInterval)
+	require.Equal(t, 12, cfg.ResearchScheduler.BatchSize)
+	require.Equal(t, 3*time.Minute, cfg.ResearchScheduler.Lease)
+}

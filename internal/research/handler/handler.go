@@ -71,6 +71,53 @@ func (h *Handler) ImportWebResult(c *gin.Context) {
 	response.Created(c, result)
 }
 
+func (h *Handler) ListSchedules(c *gin.Context) {
+	rows, err := h.service.ListSchedules(c, identity.TenantID(c))
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, rows)
+}
+
+func (h *Handler) CreateSchedule(c *gin.Context) {
+	var input researchservice.ScheduleInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.Fail(c, apperror.Validation("请求参数格式错误"))
+		return
+	}
+	row, err := h.service.CreateSchedule(c, actor(c), input)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Created(c, row)
+}
+
+func (h *Handler) UpdateSchedule(c *gin.Context) {
+	var input researchservice.ScheduleInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.Fail(c, apperror.Validation("请求参数格式错误"))
+		return
+	}
+	row, err := h.service.UpdateSchedule(c, actor(c), c.Param("id"), input)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, row)
+}
+
+func (h *Handler) ListScheduleRuns(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	rows, err := h.service.ListScheduleRuns(c, identity.TenantID(c), c.Query("schedule_id"), limit)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.OK(c, rows)
+}
+
 func (h *Handler) Verify(c *gin.Context) { h.decide(c, researchdomain.StatusVerified) }
 func (h *Handler) Reject(c *gin.Context) { h.decide(c, researchdomain.StatusRejected) }
 

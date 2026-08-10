@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: AdNova API
-  version: 1.3.0
+  version: 1.4.0
   description: |
     AdNova 单公司 MVP 的当前 HTTP 契约。业务响应统一使用 Envelope，除健康检查、注册流程、登录和刷新外均使用 Bearer Access Token。
     租户范围由 Token 决定；客户端可通过 X-Request-ID 和 X-Trace-ID 传递链路标识。
@@ -256,6 +256,59 @@ paths:
     post: {$ref: "#/components/x-operations/reviewResearchSource"}
   /api/v1/research/sources/{id}/reject:
     post: {$ref: "#/components/x-operations/reviewResearchSource"}
+  /api/v1/research/web-search/capability:
+    get:
+      summary: 读取实时研究 Provider、存储权和结果数能力
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 联网研究能力，不返回 API Key}}
+  /api/v1/research/web-search:
+    post:
+      summary: ADMIN/MANAGER/ANALYST 执行临时公开网页搜索
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/WebSearchRequest"}
+      responses: {"200": {description: 临时搜索结果与查询哈希}, "400": {description: 查询参数无效}, "503": {description: Provider 未配置或不可用}}
+  /api/v1/research/web-search/import:
+    post:
+      summary: ADMIN/MANAGER/ANALYST 把选中搜索结果登记为 PENDING 来源
+      security: [{bearerAuth: []}]
+      responses: {"201": {description: 来源已登记}, "400": {description: 未启用结果存储权或结果无效}}
+  /api/v1/research/schedules:
+    get:
+      summary: 列出当前租户自动研究任务
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: 任务列表，不返回锁 Token}}
+    post:
+      summary: ADMIN/MANAGER 创建自动研究任务
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ResearchScheduleRequest"}
+      responses: {"201": {description: 任务已创建}, "400": {description: 配置、额度或存储权无效}, "403": {description: 无权限}}
+  /api/v1/research/schedules/{id}:
+    put:
+      summary: ADMIN/MANAGER 修改或启停自动研究任务
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ResearchScheduleRequest"}
+      responses: {"200": {description: 更新后的任务}, "400": {description: 配置无效}, "409": {description: 任务正在运行}, "403": {description: 无权限}}
+  /api/v1/research/schedule-runs:
+    get:
+      summary: 列出当前租户自动研究运行记录
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: schedule_id, in: query, required: false, schema: {type: string, format: uuid}}
+        - {$ref: "#/components/parameters/Limit100"}
+      responses: {"200": {description: 安全运行快照，不包含结果全文、查询原文或凭证}}
   /api/v1/analysis/business:
     post:
       summary: 接收幂等经营分析任务并异步执行
@@ -601,6 +654,35 @@ components:
       additionalProperties: false
       properties:
         comment: {type: string, maxLength: 1000}
+    WebSearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query, category, count]
+      properties:
+        query: {type: string, maxLength: 400}
+        game_id: {type: string, format: uuid}
+        campaign_id: {type: string, format: uuid}
+        category: {type: string, enum: [POLICY, COMPETITOR, MARKET]}
+        count: {type: integer, minimum: 1, maximum: 20}
+        country: {type: string, pattern: "^[A-Z]{2}$"}
+        search_lang: {type: string, maxLength: 12}
+        freshness: {type: string, enum: [pd, pw, pm, py]}
+    ResearchScheduleRequest:
+      type: object
+      additionalProperties: false
+      required: [name, category, query, result_count, interval_minutes, enabled]
+      properties:
+        name: {type: string, minLength: 2, maxLength: 120}
+        game_id: {type: string, format: uuid}
+        campaign_id: {type: string, format: uuid}
+        category: {type: string, enum: [POLICY, COMPETITOR, MARKET]}
+        query: {type: string, maxLength: 400}
+        country: {type: string, pattern: "^[A-Z]{2}$"}
+        search_lang: {type: string, maxLength: 12}
+        freshness: {type: string, enum: [pd, pw, pm, py]}
+        result_count: {type: integer, minimum: 1, maximum: 20}
+        interval_minutes: {type: integer, minimum: 60, maximum: 10080}
+        enabled: {type: boolean}
     ResearchSource:
       type: object
       required: [id, tenant_id, category, title, summary, source_url, publisher, published_at, content_hash, status, created_by, created_at, updated_at]
@@ -613,6 +695,11 @@ components:
         title: {type: string}
         summary: {type: string}
         source_url: {type: string, format: uri}
+        discovery_method: {type: string, enum: [MANUAL, WEB_SEARCH, SCHEDULED_WEB_SEARCH]}
+        discovery_provider: {type: string}
+        discovery_query_hash: {type: string, pattern: "^[0-9a-f]{64}$"}
+        discovery_schedule_id: {type: string, format: uuid}
+        discovered_at: {type: string, format: date-time}
         publisher: {type: string}
         published_at: {type: string, format: date-time}
         content_hash: {type: string, pattern: "^[0-9a-f]{64}$"}

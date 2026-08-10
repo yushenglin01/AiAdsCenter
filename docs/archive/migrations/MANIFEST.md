@@ -1,10 +1,10 @@
 # Migration 归档清单
 
-* 归档版本：项目 1.3.0
-* 归档日期：2026-08-09
+* 归档版本：项目 1.4.0
+* 归档日期：2026-08-10
 * 来源文件：仓库根目录 `migrations/`
-* 对应迭代：DEV-20260804-001 至 DEV-20260809-002
-* 主要变更：依次建立认证、目录与导入、指标、Agent、契约追踪、异步 Outbox、审批治理、工作流消息、AppsFlyer 同步、核验研究来源、Kafka 标准数据接入、分析窗口租约恢复、企业成员注册授权、MMP 同步续租 fencing 与联网研究来源溯源字段。
+* 对应迭代：DEV-20260804-001 至 DEV-20260810-001
+* 主要变更：依次建立认证、目录与导入、指标、Agent、契约追踪、异步 Outbox、审批治理、工作流消息、AppsFlyer 同步、核验研究来源、Kafka 标准数据接入、分析窗口租约恢复、企业成员注册授权、MMP 同步续租 fencing、联网研究来源溯源与自动 Research 调度运行记录。
 * 是否兼容旧版本：up migration 均为前向新增；000007 为审批字段和审计表新增，并回填旧审批。
 * 说明：SQL 原文件是权威、不可覆盖的历史；本清单保存校验值，不复制出第二套可执行文件。
 
@@ -27,3 +27,4 @@
 | 000014_member_registration | `00af804d3a8e22b99383b51220ac4457d0ac864d731d188200667bde69ba60c1` | `36ea58d74a3f35ba9412cf9ff1373c7dfbeca0bc1ea3ce4df9c0fb9c0d530da6` |
 | 000015_mmp_sync_run_leases | `a89c5226239585a642951a20a77f691ecefc903d02d6729266c646b35641b017` | `8df86d524790b873f8d5aaf7d9197aeb0e1399ef76809df94ed3103cb3b1367c` |
 | 000016_research_web_discovery | `4f68153977117d6043b7e39c28bb0547942a5d3b7593b3ae3146489f5890517b` | `740c82a509332d756b22daad881035c1aa6f3c4e2a2746231c37a1ca200de742` |
+| 000017_scheduled_research | `95e96e7f6ebcdf8a35c95a8f6e29581005029049b45ddafdb70bbc2db9a3b8b4` | `b64eaf4bba7cf83a1b74bf99d89b8b0d383026747d7d41fc3292e64e431a3ced` |
