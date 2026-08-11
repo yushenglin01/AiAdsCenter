@@ -28,6 +28,14 @@ AdNova（星曜智投）是面向海外游戏投放团队的广告经营智能�
 - 运行：Docker Compose（api、Asynq worker、可选 Kafka ingestion worker、web、mysql、redis）
 - 测试：Go testing、testify、Vitest
 
+## 技术架构
+
+<p align="center">
+  <img src="docs/assets/adnova-technical-architecture.svg" alt="AdNova 星曜智投技术架构图" width="100%" />
+</p>
+
+架构采用 Go 模块化单体、MySQL 持久化、Redis/Asynq 异步任务和可选 Kafka 标准数据接入。确定性代码负责指标计算与业务发现，受限 Agent 仅解释已注册证据，高风险建议必须经过人工审批。详细设计见 [架构文档](docs/architecture.md)。
+
 ## 目录
 
 ```text
