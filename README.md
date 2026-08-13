@@ -1,3 +1,5 @@
+
+
 # AdNova · 星曜智投
 
 <p align="center"><strong>简体中文</strong> · <a href="README_EN.md">English</a></p>
@@ -12,7 +14,7 @@ AdNova（星曜智投）是面向海外游戏投放团队的广告经营智能�
 
 当前仓库完成 **阶段十四：自动化 Research 定时发现**。ADMIN/MANAGER 可按租户和游戏/计划配置公开网页研究任务；Worker 使用数据库租约执行，所有新来源仍进入人工核验队列。
 
-当前项目版本：**1.4.1**；最近迭代：**DEV-20260810-002**。版本历史见 [迭代索引](docs/iterations/README.md) 和 [变更日志](docs/releases/CHANGELOG.md)。
+当前项目版本：**1.4.1**；最近迭代：**DEV-20260810-003**。版本历史见 [迭代索引](docs/iterations/README.md) 和 [变更日志](docs/releases/CHANGELOG.md)。
 
 ## 核心边界
 
